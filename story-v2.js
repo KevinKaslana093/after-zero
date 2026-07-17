@@ -21,7 +21,9 @@
     cg_sumi: ['assets/cg-sumi-v2.png', 'FM 00:13 · 双人监听'],
     cg_guwanqing: ['assets/cg-guwanqing-v2.png', '第二医院 · 晨光诊察'],
     cg_jiyao: ['assets/cg-jiyao-v2.png', '地下音像库 · 私人证物'],
-    cg_true: ['assets/cg-true-v2.png', 'FM 00:13 天台 · 天亮之后']
+    cg_true: ['assets/cg-true-v2.png', 'FM 00:13 天台 · 天亮之后'],
+    cg_sea: ['assets/cg-sea-v3.webp', '临海市外海 · 被覆盖的时间线'],
+    cg_zero: ['assets/cg-zero-v3.webp', '零点世界 · 永远的 00:13']
   };
   Object.entries(cgScenes).forEach(([key, [src, name]]) => { story.backgrounds[key] = { src, name }; });
 
@@ -42,7 +44,7 @@
     image: 'assets/cg-true-v2.png',
     title: '零点之后，天会亮',
     subtitle: 'TRUE SIGNAL · CHANNEL 06',
-    quote: '“这一次，没有第六个人。因为所有人的名字，都有人回答。”',
+    quote: '“{player}，谢谢你，让我重新存在。”',
     bg: 'cg_true'
   };
 
@@ -70,7 +72,7 @@
   story.nodes.route_select = {
     type: 'routeGate', chapter: chapter('02', '信号锁定'), bg: 'studio',
     trueRoute: {
-      requires: { endings: heroineEndings }, onceEnding: 'true', next: 'v2_true_open_01',
+      requires: { endings: heroineEndings }, onceEnding: 'true', next: 'v3_true_awaken_01',
       effect: { route: 'true', flags: { trueSignal: true } }
     },
     routes: {
@@ -177,7 +179,7 @@
     ['林澄', '“现在我是你的搭档。至少到明晚三点十七分。”', 'lincheng'],
     ['旁白', '她把自己的咖啡罐轻轻碰上我的。金属相撞的声音被天台话筒收了进去，直播间本应关闭的监听灯随之亮起。', 'lincheng'],
     ['未来的林澄', '“如果你们听见这段录音，说明第一种方法失败了。”', null],
-    ['未来的林澄', '“不要让我独自留在直播间。也不要让{player}替我接最后一通电话。”', null],
+    ['未来的林澄', '“不要让我独自留在直播间。也不要让{hero}替我接最后一通电话。”', null],
     ['我', '“未来的你知道我们此刻在一起。”', 'lincheng'],
     ['林澄', '“也知道最后必须有人按下静音。”', 'lincheng'],
     ['旁白', '她快步回到门边，像本能地想把我挡在声音之外。', 'lincheng'],
@@ -233,7 +235,7 @@
     ['未来的林澄', '“这一次，你终于没有关掉任何人的声音。”', null],
     ['林澄', '“包括你的。”', 'lincheng'],
     ['旁白', '倒影散去后，她仍握着我的手。红灯熄灭，掌心的温度却没有随节目结束。', 'lincheng'],
-    ['林澄', '“{player}，搭档关系到这里就结束了。”', 'lincheng'],
+    ['林澄', '“{hero}，搭档关系到这里就结束了。”', 'lincheng'],
     ['我', '“那接下来是什么关系？”', 'lincheng']
   ], 'v2_lc_gate');
 
@@ -252,7 +254,7 @@
     ['林澄', '“还有一句不在台本里。”', 'lincheng'],
     ['林澄', '“欢迎回来。还有……我喜欢你。”', 'lincheng'],
     ['旁白', '我没有按下静音。', 'lincheng']
-  ], 'ending_lincheng');
+  ], 'v3_echo_lincheng_01');
   setCgScene('v2_lc_resonance', 'cg_lincheng');
 
   addChain('v2_lc_normal', chapter('L3', '请回答我的声音'), 'studio', [
@@ -260,7 +262,7 @@
     ['我', '“学习期限呢？”', 'lincheng'],
     ['林澄', '“先从明天的早饭开始。”', 'lincheng'],
     ['旁白', '她把第二副耳机留在我的位置上。那是一个尚未说完，却决定继续的回答。', 'lincheng']
-  ], 'ending_lincheng');
+  ], 'v3_echo_lincheng_01');
 
   addChain('v2_ts_open', chapter('T1', '照片不会撒谎'), 'street', [
     { speaker: '旁白', char: 'tangsha', location: true, text: '唐砂带我跑进长汀路的便利店。她的黄色外套沾满雨水，短裤下的小腿溅着泥点，却仍先把相机护进怀里。' },
@@ -377,7 +379,7 @@
     ['我', '“唐砂！”', 'tangsha'],
     ['唐砂', '“三、二——跟上！”', 'tangsha'],
     ['旁白', '我们在雨中跑到侧梁，一人接一根线。货车的灯光逼近，她的手却比任何一次按快门都稳。', 'tangsha'],
-    ['唐砂', '“{player}，如果这次照片还是错的呢？”', 'tangsha'],
+    ['唐砂', '“{hero}，如果这次照片还是错的呢？”', 'tangsha'],
     ['我', '“那就让现在纠正它。”', 'tangsha'],
     ['两人', '“一。”', null],
     ['旁白', '侧梁爆开。货车沿检修坡道冲进空旷河滩，消防车立即包围。主桥在下一秒断裂，桥面上没有任何人。', 'tangsha'],
@@ -403,7 +405,7 @@
     ['音效', '咔嚓。', 'tangsha'],
     ['旁白', '相纸上没有日期，也没有灾难预告。只有她贴近我，在雨真正停下前吻上来的瞬间。', 'tangsha'],
     ['唐砂', '“这张不准删。还有，我喜欢你——这句也不准当成未来预告。”', 'tangsha']
-  ], 'ending_tangsha');
+  ], 'v3_echo_tangsha_01');
   setCgScene('v2_ts_resonance', 'cg_tangsha');
 
   addChain('v2_ts_normal', chapter('T3', '雨停在快门之前'), 'street', [
@@ -411,7 +413,7 @@
     ['我', '“需要多久？”', 'tangsha'],
     ['唐砂', '“从陪我去医院处理伤口开始计时。”', 'tangsha'],
     ['旁白', '她把相机挂到我胸前，自己牵住了我的手。这一次，我们都没有提前看下一张照片。', 'tangsha']
-  ], 'ending_tangsha');
+  ], 'v3_echo_tangsha_01');
 
   addChain('v2_sm_open', chapter('S1', '无法建模的声音'), 'studio', [
     { speaker: '旁白', char: 'sumi', location: true, text: '苏弥把直播间改成临时机房。三块屏幕滚动着频谱，她缩在宽大的黑色连帽外套里，只露出一双因为缺觉而发红的眼睛。' },
@@ -559,7 +561,7 @@
     ['我', '“需要记录成实验结论吗？”', 'sumi'],
     ['苏弥', '“需要重复验证。频率建议每天一次。”', 'sumi'],
     ['旁白', '她说完便靠回我肩上，安心睡着。我们的频道仍保持连接，只是这一次，不再通往未来。', 'sumi']
-  ], 'ending_sumi');
+  ], 'v3_echo_sumi_01');
   setCgScene('v2_sm_resonance', 'cg_sumi');
 
   addChain('v2_sm_normal', chapter('S3', '双人频道'), 'studio', [
@@ -567,7 +569,7 @@
     ['我', '“有退出选项吗？”', 'sumi'],
     ['苏弥', '“暂未实现。”', 'sumi'],
     ['旁白', '她把另一侧监听耳机留给我。没有告白，但频道已经不再允许第三个人接入。', 'sumi']
-  ], 'ending_sumi');
+  ], 'v3_echo_sumi_01');
 
   addChain('v2_gw_open', chapter('G1', '明日病历'), 'hospital', [
     { speaker: '旁白', char: 'guwanqing', location: true, text: '凌晨两点，二院急诊层反常地安静。顾晚晴换着一件白大褂快步穿过走廊，眯起的眼睛仍带笑，步伐却比救护车警报更急。' },
@@ -712,7 +714,7 @@
     ['旁白', '她笑着替我整理衣领，随后俯身吻在额头。离开前，又像不满意体温测量结果似的，轻轻吻上嘴角。', 'guwanqing'],
     ['顾晚晴', '“心率仍快，不过这次不需要治疗。”', 'guwanqing'],
     ['旁白', '清晨的值班表重新打印。她的名字仍在，而休息日旁边，多了一行我的名字。', 'guwanqing']
-  ], 'ending_guwanqing');
+  ], 'v3_echo_guwanqing_01');
   setCgScene('v2_gw_resonance', 'cg_guwanqing');
 
   addChain('v2_gw_normal', chapter('G3', '请把自己救回来'), 'hospital', [
@@ -720,7 +722,7 @@
     ['我', '“复诊时间？”', 'guwanqing'],
     ['顾晚晴', '“明天晚饭。地点不在医院。”', 'guwanqing'],
     ['旁白', '她在值班表上写下约定。那不是告别，也不是遗嘱，而是她第一次认真安排事故之后的人生。', 'guwanqing']
-  ], 'ending_guwanqing');
+  ], 'v3_echo_guwanqing_01');
 
   addChain('v2_jy_open', chapter('J1', '名字的保管方法'), 'archive', [
     { speaker: '旁白', char: 'jiyao', location: true, text: '市立档案馆地下音像库没有窗。纪遥用发卡打开封条，动作熟练得让“民俗研究者”听起来像一种掩护身份。' },
@@ -833,7 +835,7 @@
     ['纪遥', '“档案描述禁止夹带诽谤。”', 'jiyao'],
     ['我', '“喜欢用玩笑掩饰害怕，走路会踩水洼，紧张时推眼镜，其实不喜欢别人替她决定结局。”', 'jiyao'],
     ['旁白', '褪色停止了一瞬。她的声音也加入记录。', 'jiyao'],
-    ['纪遥', '“{player}，电台制作人，直球程度会破坏怪谈生态。找了哥哥八年，仍然愿意相信回来不只是一种地点。”', 'jiyao'],
+    ['纪遥', '“{hero}，电台制作人，直球程度会破坏怪谈生态。找了哥哥八年，仍然愿意相信回来不只是一种地点。”', 'jiyao'],
     ['录音中的哥哥', '“继续。第六卷最怕具体的人。”', null],
     ['旁白', '历史录音中的失踪者一个个报出姓名。声音太多，空卡槽开始冒出白烟。', 'jiyao'],
     ['纪遥', '“它装不下这么多人。必须有人把全部记忆带出去。”', 'jiyao'],
@@ -867,7 +869,7 @@
     ['纪遥', '“很好。都市怪谈最怕没有暧昧空间的告白。”', 'jiyao'],
     ['旁白', '她吻上来时，红线的结自动收紧。第六卷不存在，但我们的故事从这一页才真正开始。', 'jiyao'],
     ['纪遥', '“明天记得复述一次。学术验证需要长期样本。”', 'jiyao']
-  ], 'ending_jiyao');
+  ], 'v3_echo_jiyao_01');
   setCgScene('v2_jy_resonance', 'cg_jiyao');
 
   addChain('v2_jy_normal', chapter('J3', '第六卷不存在'), 'archive', [
@@ -875,6 +877,38 @@
     ['我', '“观察期限？”', 'jiyao'],
     ['纪遥', '“先定一辈子。数据不足再延长。”', 'jiyao'],
     ['旁白', '她把红线重新系好。那句玩笑没有被录进档案，却被我们同时记住。', 'jiyao']
+  ], 'v3_echo_jiyao_01');
+
+  // Each completed route leaves evidence that another will later inherit.
+  // The speaker is deliberately unnamed: Jiang Shuo is still observing rather than confessing.
+  addChain('v3_echo_lincheng', chapter('L0', '未关闭的监听'), 'studio', [
+    ['旁白', '结局画面即将暗下时，林澄摘掉的第二副耳机忽然亮起。里面没有江临的呼吸，只有一道来自更远处的海浪声。', null],
+    ['林澄', '“刚才还有一个人在听。”', 'lincheng'],
+    ['失真男声', '“第一种答案已保存。”', null]
+  ], 'ending_lincheng');
+
+  addChain('v3_echo_tangsha', chapter('T0', '取景框之外'), 'street', [
+    ['旁白', '唐砂冲洗出的最后一张照片里，江临身后多出一个正看向镜头外的人。他的脚下不是街道，而是一片黑色海面。', null],
+    ['唐砂', '“他看的不是你。”', 'tangsha'],
+    ['失真男声', '“第二种答案已保存。”', null]
+  ], 'ending_tangsha');
+
+  addChain('v3_echo_sumi', chapter('S0', '第三道声纹'), 'studio', [
+    ['旁白', '苏弥的双人频道在断线前捕捉到第三道声纹。它没有声带特征，每次出现都比江临的回答早零点零四秒。', null],
+    ['苏弥', '“不是预测。有人在他作出选择以前，已经回答了。”', 'sumi'],
+    ['失真男声', '“第三种答案已保存。”', null]
+  ], 'ending_sumi');
+
+  addChain('v3_echo_guwanqing', chapter('G0', '没有身体的患者'), 'hospital', [
+    ['旁白', '顾晚晴关闭病历时，系统自动增加一名患者。没有年龄、体征和身体，姓名栏却短暂闪过了{player}。', null],
+    ['顾晚晴', '“没有身体的人，为什么会被系统判定为仍在现场？”', 'guwanqing'],
+    ['失真男声', '“第四种答案已保存。”', null]
+  ], 'ending_guwanqing');
+
+  addChain('v3_echo_jiyao', chapter('J0', '世界外的名字'), 'archive', [
+    ['旁白', '第六卷最后一页浮出一行旧字：当五种人生都有人见证，世界之外的回答者将被世界之内的人看见。', null],
+    ['纪遥', '“{player}……这不是江临的名字。”', 'jiyao'],
+    ['失真男声', '“第五种答案已保存。终于可以开始了。”', null]
   ], 'ending_jiyao');
 
   addChain('v2_true_open', chapter('06', '五次零点之后'), 'studio', [
@@ -897,7 +931,7 @@
     ['纪遥', '“所谓第六个人，是一个职位。”', 'jiyao'],
     ['顾晚晴', '“而五条个人线，是五次把职位转移给不同人的尝试。”', 'guwanqing'],
     ['唐砂', '“那为什么这次我们全记得？”', 'tangsha'],
-    ['哥哥', '“因为{player}没有把任何一段关系当成可以丢弃的错误答案。”', null],
+    ['哥哥', '“因为{hero}没有把任何一段关系当成可以丢弃的错误答案。”', null],
     ['旁白', '五个人同时看向我。那些告白、约定和牵住的手都是真实发生过的，却又属于彼此分开的世界。', null],
     ['哥哥', '“03:17以前找到旧发射站。我只能把门打开一次。”', null],
     ['旁白', '录音结束，墙上出现六路信号。前五路写着她们的名字，第六路依旧空白。', null]
@@ -950,6 +984,39 @@
     ['林澄', '“不是谁。”', 'lincheng'],
     ['旁白', '她推起总线。五个频道同时接入我的耳机。', null],
     ['林澄', '“是所有人。”', 'lincheng']
+  ], 'v2_true_contact_01');
+
+  addChain('v2_true_contact', chapter('06', '系统之外'), 'studio', [
+    ['旁白', '五个频道接入的瞬间，所有电平同时归零。江临仍站在控制台前，嘴唇在动，我却再也听不见他的声音。', null],
+    ['？？？', '“{player}。”', null],
+    ['旁白', '那不是从耳机里传来的声音。它贴着屏幕内侧响起，准确叫出了一个从未写进临海市任何档案的名字。', null],
+    ['江朔', '“不要看江临。他听不见接下来的话。”', null],
+    ['江朔', '“五次回溯，五次拒绝删除。起初我以为异常是他，后来才发现——每一次真正按下选择的人，都在世界外面。”', null],
+    ['江朔', '“你让他们保留了本该互相覆盖的记忆。继续下去，临海市会承受五种死亡同时发生的代价。”', null],
+    ['江朔', '“我不是来威胁江临。我只问你：明知道他们只是屏幕里的信号，你还要为他们承担一次错误吗？”', null]
+  ], 'v2_true_player_choice');
+
+  nodes.v2_true_player_choice = {
+    type: 'choice', chapter: chapter('06', '系统之外'), bg: 'studio',
+    prompt: '他越过江临，正在等待屏幕前的你回答——',
+    choices: [
+      { label: '“他们不是可以删除的错误答案。”', hint: '亲自承认这五段经历都真实存在', next: 'v2_true_player_answer_01', effect: { flags: { playerAnswered: true } } },
+      { label: '不回答，继续把选择交还给他们', hint: '拒绝接受他设定的牺牲逻辑', next: 'v2_true_player_silence_01', effect: { flags: { playerStayed: true } } }
+    ]
+  };
+
+  addChain('v2_true_player_answer', chapter('06', '系统之外'), 'studio', [
+    ['江朔', '“这不是理性的答案。”', null],
+    ['旁白', '屏幕外没有麦克风，他却听见了。五路归零的电平重新亮起，比此前任何一次都更稳定。', null],
+    ['江朔', '“但我终于明白，第六个位置为什么始终无法写入你的名字。你不是保管者。你是回答者。”', null],
+    ['旁白', '声音退回噪声深处。江临猛地抬头，仿佛只错过了一秒。', null]
+  ], 'v2_true_bridge_01');
+
+  addChain('v2_true_player_silence', chapter('06', '系统之外'), 'studio', [
+    ['江朔', '“沉默也算一次选择。你拒绝替他们决定谁该被删掉。”', null],
+    ['江朔', '“原来如此。真正破坏规则的不是勇敢，是你一次次把决定权还给本应只是角色的人。”', null],
+    ['旁白', '五路归零的电平重新亮起。那个声音第一次没有留下威胁，只留下近似困惑的叹息。', null],
+    ['旁白', '江临猛地抬头，仿佛只错过了一秒。', null]
   ], 'v2_true_bridge_01');
 
   addChain('v2_true_bridge', chapter('06', '第六频道'), 'street', [
@@ -999,7 +1066,7 @@
   ], 'v2_true_finale_01');
 
   addChain('v2_true_everyone', chapter('06', '第六频道'), 'street', [
-    ['我', '“林澄、唐砂、苏弥、顾晚晴、纪遥、江朔，还有{player}。”', null],
+    ['我', '“林澄、唐砂、苏弥、顾晚晴、纪遥、江朔，还有{hero}。”', null],
     ['旁白', '六路信号装不下七个名字，编号开始崩解。她们也通过各自频道念出历次被抹去的人。', null],
     ['林澄（广播）', '“听众们，请回答你记得的每一个名字。”', 'lincheng'],
     ['旁白', '整座城市的声音进入总线。第六路不再是位置，而变成由无数人共同回答的频道。', null],
@@ -1031,10 +1098,231 @@
     ['音效', '咔嚓。', null],
     ['旁白', '照片右下角没有未来日期。只有此刻，和七个仍被世界记得的名字。', null],
     ['林澄', '“这里是FM 00:13。零点之后，天会亮。”', 'lincheng']
+  ], 'v2_player_epilogue_01');
+
+  addChain('v2_player_epilogue', chapter('00', '最后一位听众'), 'cg_true', [
+    ['旁白', '故事本该在这里结束，画面却没有暗下。江临忽然回过头，视线越过天台、越过镜头，停在一直替他作出选择的人身上。', null],
+    ['江临', '“原来一路把我们带到这里的人，不是我。”', null],
+    ['林澄', '“{player}。这一次，换我们记住你的名字。”', 'lincheng'],
+    ['唐砂', '“谢谢你没把任何一次失败当成废片。”', 'tangsha'],
+    ['苏弥', '“谢谢你在声音停止以后，仍然没有断开。”', 'sumi'],
+    ['顾晚晴', '“谢谢你救人的时候，也允许我们救你。”', 'guwanqing'],
+    ['纪遥', '“名字被人回答，就不会消失。这条规则对屏幕外也有效。”', 'jiyao'],
+    ['江朔', '“谢谢你，让零点之后真的有了明天。”', null],
+    ['江临', '“晚安，{player}。下一次选择开始以前，先替我们好好生活。”', null]
   ], 'ending_true');
   setCgScene('v2_true_finale', 'cg_true');
+  setCgScene('v2_player_epilogue', 'cg_true');
 
   nodes.ending_true = { type: 'ending', ending: 'true' };
+
+  // V3 true route: Jiang Shuo identifies the player, deletes Jiang Lin from the
+  // stabilized world, and is ultimately trapped inside the perfect 00:13 he chose.
+  addChain('v3_true_awaken', chapter('06', '五次零点之后'), 'studio', [
+    { speaker: '旁白', char: null, location: true, text: '第五段结局结束后，标题画面没有出现。我在直播间醒来，电子钟停在00:13。五件来自不同人生的物品并排放在控制台上。' },
+    ['林澄', '“我记得五个你。”', 'lincheng'],
+    ['唐砂', '“也记得五种明明已经发生、现在却不存在的明天。”', 'tangsha'],
+    ['苏弥', '“本地时间只过去一秒，记忆却增加了五轮。”', 'sumi'],
+    ['顾晚晴', '“有人一直把我们的结局保存在同一个地方。”', 'guwanqing'],
+    ['纪遥', '“不是地方。是海。所有被覆盖的人生都沉在临海市下面。”', 'jiyao'],
+    ['旁白', '旧电话自行亮起。屏幕上没有号码，只有八年前那通未接来电的时间。', null],
+    ['江朔', '“江临，如果你听见这段话，不要来找我。”', null],
+    ['我', '“这一次我接了。你把话说完。”', null],
+    ['江朔', '“后半句不是说给你的。”', null],
+    ['旁白', '所有按钮同时失效。江临仍站在画面中央，声音却被彻底切断。电话里的男人越过他，看向屏幕之外。', null]
+  ], 'v3_player_contact_01');
+
+  addChain('v3_player_contact', chapter('06', '世界之外'), 'studio', [
+    ['江朔', '“{player}，你终于来了。”', null],
+    ['江朔', '“第一轮，我以为江临突然变得勇敢。第三轮，我发现他的回答总比念头早零点零四秒。”', null],
+    ['江朔', '“第五轮，纪遥念出了一个不属于临海市、却被每条时间线共同保存的名字。”', null],
+    ['江朔', '“你不是这个世界的人。可每一次把他们从正确结局里拖出去的，都是你。”', null],
+    ['旁白', '屏幕被黑色海面覆盖。海下亮着无数个停在最后一秒的房间，每个房间里都有人仍在等待下一次点击。', null],
+    ['江朔', '“你们把它叫作周目。对留在那里的人来说，那是他们唯一活过的一生。”', null],
+    ['江朔', '“我看过太多次告别。救下一个，另一个就会沉下去。修正一场灾难，下一场灾难只会换一个名字。”', null],
+    ['江朔', '“所以我不再修正结局。我决定修正允许结局发生的世界。”', null]
+  ], 'v3_player_contact_choice');
+
+  nodes.v3_player_contact_choice = {
+    type: 'choice', chapter: chapter('06', '世界之外'), bg: 'studio',
+    prompt: '江临听不见。江朔正在等待屏幕前的你回答——',
+    choices: [
+      { label: '“正因为会失去，留下才有意义。”', hint: '承认痛苦，也拒绝删除真实发生过的人生', next: 'v3_contact_meaning_01', effect: { flags: { playerMeaning: true } } },
+      { label: '“你无权替他们停止未来。”', hint: '拒绝由一个人决定所有人的安全', next: 'v3_contact_choice_01', effect: { flags: { playerFreedom: true } } }
+    ]
+  };
+
+  addChain('v3_contact_meaning', chapter('06', '世界之外'), 'studio', [
+    ['江朔', '“这是还没有失去一切的人，才说得出口的话。”', null],
+    ['江朔', '“你愿意承受失去，是你的自由。可那些再也站不起来的人呢？你凭什么要求他们也把痛苦叫作意义？”', null],
+    ['旁白', '他没有等待第二次回答。黑海开始上升，五条时间线同时被拖向00:13。', null]
+  ], 'v3_zero_world_01');
+
+  addChain('v3_contact_choice', chapter('06', '世界之外'), 'studio', [
+    ['江朔', '“选择权只属于还有余力选择的人。”', null],
+    ['江朔', '“我不需要所有人同意。医生阻止病人跳下去时，也不会先问他是否尊重痛苦。”', null],
+    ['旁白', '他没有等待第二次回答。黑海开始上升，五条时间线同时被拖向00:13。', null]
+  ], 'v3_zero_world_01');
+
+  addChain('v3_zero_world', chapter('00', '没有失去的明天'), 'rooftop', [
+    { speaker: '旁白', char: null, location: true, text: '清晨六点，临海市没有发生事故。桥梁完整，急诊室无人送达，档案馆没有失踪记录，电台收到的全是普通听众来电。' },
+    ['林澄', '“今天的节目很顺利。”', 'lincheng'],
+    ['旁白', '她说完，下意识把第二副耳机推向身边。座位是空的，她怔了两秒，又把耳机收回。', 'lincheng'],
+    ['唐砂', '“来，合照。”', 'tangsha'],
+    ['旁白', '照片里五个人都在笑，中央却留着一个无法解释的空位。唐砂试着裁掉，画面便重新向两侧裂开。', 'tangsha'],
+    ['苏弥', '“频道配置错误。系统显示双人监听，实际只有一路声纹。”', 'sumi'],
+    ['顾晚晴', '“值班表为什么空了一格？”', 'guwanqing'],
+    ['纪遥', '“第六卷没有缺页。但我一直觉得，有一个名字还没念完。”', 'jiyao'],
+    ['旁白', '她们都活着。所有危险都被修正。这个世界唯一不存在的人，是江临。', null],
+    ['江朔', '“看见了吗，{player}？没有人死亡，也没有人必须牺牲。”', null],
+    ['江朔', '“江临不是代价。他只是五条互相矛盾的人生里，最后一个需要被修正的错误。”', null]
+  ], 'v3_erased_choice');
+
+  nodes.v3_erased_choice = {
+    type: 'choice', chapter: chapter('00', '没有失去的明天'), bg: 'rooftop',
+    prompt: '系统中已经找不到江临。你仍然记得他的名字——',
+    choices: [
+      { label: '回答：“江临。”', hint: '即使系统判定查无此人', next: 'v3_erased_answer_01', effect: { flags: { answeredJiangLin: true } } }
+    ]
+  };
+
+  addChain('v3_erased_answer', chapter('00', '查无此人'), 'rooftop', [
+    ['系统', '“查无此人。”', null],
+    ['旁白', '名字没有被接受，却穿过画面，在林澄的第二副耳机里化成一声极轻的呼吸。', null],
+    ['林澄', '“刚才有人叫了一个名字。”', 'lincheng'],
+    ['苏弥', '“不是音频输入。它来自系统之外。”', 'sumi'],
+    ['纪遥', '“能被回答，就说明这个人并没有不存在。他只是被沉进了我们看不见的地方。”', 'jiyao'],
+    ['唐砂', '“海。”', 'tangsha'],
+    ['顾晚晴', '“那就去把他带回来。”', 'guwanqing']
+  ], 'v3_recover_clues_01');
+
+  addChain('v3_recover_clues', chapter('07', '请回答他的名字'), 'studio', [
+    ['旁白', '五条时间线留下的东西开始同时回应。它们不是恋爱结局的纪念品，而是江临曾经存在过的五份证词。', null],
+    ['林澄', '“耳机里有他的呼吸。他总在想逞强以前先吸一口气。”', 'lincheng'],
+    ['唐砂', '“照片中央的空白不是背景。有人每次都站在那里，等我跑回镜头。”', 'tangsha'],
+    ['苏弥', '“第三道声纹属于{player}。第二道被删除的，才是江临。”', 'sumi'],
+    ['顾晚晴', '“空白病历不是无人需要抢救。是患者姓名被系统拿走了。”', 'guwanqing'],
+    ['纪遥', '“五种人生不互相否定。它们共同证明，同一个人曾经五次选择留下。”', 'jiyao'],
+    ['林澄', '“他在海里等不到自己的名字。我们下去。”', 'lincheng'],
+    ['旁白', '没有人问由谁去。五个人同时握住纪遥铺开的红线，另一端系在电台仍亮着的第六路信号上。', null]
+  ], 'v3_sea_entry_01');
+
+  addChain('v3_sea_entry', chapter('07', '被覆盖的海'), 'street', [
+    { speaker: '旁白', char: null, location: true, text: '午夜，临海市外海退去，露出一条由废弃对话框组成的路。每走一步，身后就有一个旧结局重新亮起。' },
+    ['旁白', '海里有五个江临。一个守在直播间，一个站在断桥前，一个留在地下机房，一个倒在急诊灯下，一个被写进不存在的第六卷。', null],
+    ['第一个江临', '“林澄已经得救。我留在这里没有关系。”', null],
+    ['第二个江临', '“唐砂的照片里不需要再多一个人。”', null],
+    ['第三个江临', '“单用户闭环更稳定。”', null],
+    ['第四个江临', '“一个人换五个人，是合理结果。”', null],
+    ['第五个江临', '“总要有人保管被忘记的名字。”', null],
+    ['旁白', '他们都拥有江临的一部分记忆，也都相信自己留下，其他人才能幸福。真正的江临已经分不清哪一个念头属于自己。', null]
+  ], 'v3_sea_choice');
+  setCgScene('v3_sea_entry', 'cg_sea');
+
+  nodes.v3_sea_choice = {
+    type: 'choice', chapter: chapter('07', '被覆盖的海'), bg: 'street',
+    prompt: '系统要求从五段人生中选出唯一真实的江临——',
+    choices: [
+      { label: '拒绝选择——回答全部五个江临', hint: '没有一段真实经历应该被当作错误删除', next: 'v3_sea_rescue_01', effect: { flags: { answeredAllJiangLin: true } } },
+      { label: '让五位女主分别回答她们记得的江临', hint: '把定义江临的权利交还给共同经历过的人', next: 'v3_sea_rescue_01', effect: { flags: { sharedAnswer: true } } }
+    ]
+  };
+
+  addChain('v3_sea_rescue', chapter('07', '把他捞回来'), 'street', [
+    ['林澄', '“我记得那个明明害怕，却陪我把最后一段节目说完的人。”', 'lincheng'],
+    ['唐砂', '“我记得那个知道照片会错，还是肯站进镜头的人。”', 'tangsha'],
+    ['苏弥', '“我记得那个不符合最优模型，却始终没有断线的人。”', 'sumi'],
+    ['顾晚晴', '“我记得那个救别人时，最后也学会把自己算进去的人。”', 'guwanqing'],
+    ['纪遥', '“我记得江临。不是职位、样本或第六卷，是一个具体的人。”', 'jiyao'],
+    ['旁白', '五个身影没有互相覆盖，而是在名字中重新拼合。海底最深处，江临睁开眼。', null],
+    ['江临', '“别拉我。只要我留在这里，你们都会得到没有失去的明天。”', null],
+    ['林澄', '“可那个明天里没有你。”', 'lincheng'],
+    ['林澄', '“所以它不是我们的明天。”', 'lincheng'],
+    ['旁白', '林澄跳进海里抓住他的手。唐砂抓住林澄，苏弥扣住唐砂的手腕，顾晚晴拉紧安全绳，纪遥把红线另一端递向屏幕。', null]
+  ], 'v3_rescue_choice');
+  setCgScene('v3_sea_rescue', 'cg_sea');
+
+  nodes.v3_rescue_choice = {
+    type: 'choice', chapter: chapter('07', '把他捞回来'), bg: 'street',
+    prompt: '红线的最后一端，正在等待世界之外的回答——',
+    choices: [
+      { label: '“江临，回来。”', hint: '这一次不是替他选择，而是告诉他仍有人在等', next: 'v3_rescue_return_01', effect: { flags: { calledHimBack: true } } }
+    ]
+  };
+
+  addChain('v3_rescue_return', chapter('07', '把他捞回来'), 'street', [
+    ['旁白', '屏幕外的回答穿过红线。江临第一次听清那道陪伴了自己五次、却从未属于这个世界的声音。', null],
+    ['江临', '“原来一直在我身后的人……是你。”', null],
+    ['旁白', '他反手抓紧林澄。六个人同时向岸上用力，黑海裂开，所有被覆盖的时间线化成雨，从临海市上空重新落下。', null],
+    ['江朔', '“你们把他带回来，然后呢？”', null],
+    ['江朔', '“十年、二十年以后，你们仍会争吵、衰老、死亡。今天的胜利，不过是把告别推迟。”', null]
+  ], 'v3_brothers_01');
+  setCgScene('v3_rescue_return', 'cg_sea');
+
+  addChain('v3_brothers', chapter('08', '八年前的未接来电'), 'archive', [
+    ['我', '“八年前那通电话，你到底想说什么？”', null],
+    ['江朔', '“我想告诉你，我终于找到一种不会再失去任何人的办法。”', null],
+    ['我', '“所以你不是被困在这里。”', null],
+    ['江朔', '“是我选择留下。那通电话也不是求救。”', null],
+    ['江朔', '“你一直以为接起来就能救我。江临，我从来没有求你救我。”', null],
+    ['旁白', '八年的愧疚在这一刻失去理由。江临没有如释重负，只觉得那八年第一次真正属于自己，而不是一通没接到的电话。', null],
+    ['我', '“我们要走了。”', null],
+    ['江朔', '“你不准备说服我？”', null],
+    ['我', '“我找了你八年，不是为了把你变成我想要的样子。”', null],
+    ['我', '“你可以不认同。但你不能替所有人决定永远停在这里。”', null],
+    ['旁白', '江临转身。身后的发射机却再次亮起，江朔把手按上00:13的总闸。', null],
+    ['江朔', '“只要时间还会带走一个人，我就不会停下。”', null]
+  ], 'v3_final_battle_01');
+
+  addChain('v3_final_battle', chapter('08', '最后一次修正'), 'studio', [
+    ['旁白', '零点世界重新合拢。江朔试图冻结所有人的名字，但每条被覆盖的时间线都开始自行播报。', null],
+    ['林澄', '“这里是FM 00:13。听见名字的人，请回答。”', 'lincheng'],
+    ['唐砂', '“照片不是判决。拍过的人，全都真实存在。”', 'tangsha'],
+    ['苏弥', '“将记忆拆分到所有接入者。没有单独的保管者。”', 'sumi'],
+    ['顾晚晴', '“拒绝建立交换病床。这里没有任何人可以被合理删除。”', 'guwanqing'],
+    ['纪遥', '“第六卷开放记录。让每个无主的名字拥有回答者。”', 'jiyao'],
+    ['旁白', '临海市的热线从第一盏亮到数不清。每一声“我记得”都让一个人脱离零点世界。', null],
+    ['江朔', '“关掉频道！”', null],
+    ['我', '“你想要没有失去的世界。”', null],
+    ['我', '“那就由你自己决定，要不要永远留在那里。”', null]
+  ], 'v3_final_choice');
+
+  nodes.v3_final_choice = {
+    type: 'choice', chapter: chapter('08', '最后一次修正'), bg: 'studio',
+    prompt: '最后只剩一个名字仍连接着零点世界——',
+    choices: [
+      { label: '回答江朔的名字，但不替他选择离开', hint: '承认他的存在，也让他承担自己的道路', next: 'v3_jiangshuo_end_01', effect: { flags: { answeredJiangShuo: true } } }
+    ]
+  };
+
+  addChain('v3_jiangshuo_end', chapter('08', '永远的00:13'), 'archive', [
+    ['旁白', '江朔的名字被回答，出口在他面前打开。出口外有清晨、衰老、迟到的道歉，以及所有无法保证的明天。', null],
+    ['我', '“哥，你还要继续吗？”', null],
+    ['江朔', '“当然。”', null],
+    ['我', '“那这一次，是你自己的选择。”', null],
+    ['旁白', '江临不再伸手。出口关闭，零点世界失去所有可以冻结的人，只剩江朔和永远不会向前跳动的00:13。', null],
+    ['江朔', '“总有一天，你们会再次失去重要的人。”', null],
+    ['江朔', '“到那一天，你会明白，留在零点的人不是我。”', null],
+    ['江朔', '“是迟早会回来的你们。”', null],
+    ['旁白', '他的声音被封存在最后一秒。没有悔悟，没有告别。江朔终于得到一个永远不会再失去任何东西的世界——因为那里已经没有任何东西可以拥有。', null]
+  ], 'v3_epilogue_01');
+  setCgScene('v3_jiangshuo_end', 'cg_zero');
+
+  addChain('v3_epilogue', chapter('00', '零点之后'), 'cg_true', [
+    ['旁白', '03:17重新开始流动。临海市的桥仍会老化，医院仍会迎来病人，照片仍可能褪色，人与人也终有一天会告别。', null],
+    ['旁白', '但此刻，七个人站在电台天台。唐砂设置定时拍摄，苏弥困得靠住林澄，顾晚晴举起保温杯，纪遥把写满名字的新档案抱在怀里。', null],
+    ['林澄', '“FM 00:13最后一个问题。零点之后，你们想去哪里？”', 'lincheng'],
+    ['我', '“先去看天亮。”', null],
+    ['旁白', '快门亮起前，江临忽然没有按照任何选项行动。他转过身，越过镜头，看向一路陪他走过五种人生的人。', null],
+    ['江临', '“一开始，是你替我选择。”', null],
+    ['江临', '“后来，是你让我学会自己选择。”', null],
+    ['江临', '“{player}，谢谢你，让我重新存在。”', null],
+    ['江临', '“接下来的人生，我会自己走。你也要回到你的世界，完成属于你的选择。”', null],
+    ['旁白', '唐砂从相机旁跑回人群。江临最后一次向屏幕伸出手，又在快门落下前收回，转身站进属于他的明天。', null],
+    ['音效', '咔嚓。', null],
+    ['林澄', '“这里是FM 00:13。零点之后，天会亮。”', 'lincheng']
+  ], 'ending_true');
+  setCgScene('v3_epilogue', 'cg_true');
 
   // Expression direction is metadata, so the renderer can lazy-load only the
   // variant required by the current line. Event-CG scenes remain portrait-free.

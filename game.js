@@ -3,6 +3,8 @@
 
   const STORY = window.AFTER_ZERO_STORY;
   const STORAGE_KEY = 'after-zero-save-v1';
+  const HERO_NAME = '江临';
+  const DEFAULT_PLAYER_NAME = '未署名听众';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -62,9 +64,9 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent)); } catch (_) {}
   }
 
-  function newState(player = '江临', start = STORY.start) {
+  function newState(player = DEFAULT_PLAYER_NAME, start = STORY.start) {
     return {
-      player, nodeId: start, route: null,
+      player, hero: HERO_NAME, nodeId: start, route: null,
       affinity: Object.fromEntries(Object.keys(STORY.characters).map(k => [k, 0])),
       flags: {}, history: [], startedAt: Date.now(), currentBg: 'rooftop', currentPortrait: null, currentExpression: 'default'
     };
@@ -148,7 +150,9 @@
   const audio = new AudioEngine();
 
   function token(text = '') {
-    return String(text).replaceAll('{player}', state?.player || '江临');
+    return String(text)
+      .replaceAll('{hero}', state?.hero || HERO_NAME)
+      .replaceAll('{player}', state?.player || DEFAULT_PLAYER_NAME);
   }
 
   function setScreen(target) {
@@ -440,7 +444,7 @@
     dom.endingIndex.textContent = `${String(ending.index).padStart(2, '0')} / ${String(ending.total || 5).padStart(2, '0')}`;
     dom.endingTitle.textContent = ending.title;
     dom.endingSubtitle.textContent = ending.subtitle;
-    dom.endingQuote.textContent = ending.quote;
+    dom.endingQuote.textContent = token(ending.quote);
     audio.signal();
     setTimeout(() => toast(isNew ? '新结局已记录至终夜档案' : '已读取结局记录'), 700);
   }
@@ -456,11 +460,17 @@
     }
     dom.endingCount.textContent = `${heroineCount} / 5${persistent.endings.includes('true') ? ' · TRUE' : ''}`;
     dom.continue.disabled = !persistent.autoSave;
+    dom.newGame.querySelector('span').textContent = persistent.endings.includes('true') ? 'ANSWER AGAIN' : 'NEW SIGNAL';
+    dom.newGame.querySelector('b').textContent = persistent.endings.includes('true') ? '再次回答' : '开始新故事';
   }
 
   function startGame(gameState) {
     audio.ensure();
     state = clone(gameState);
+    state.hero = HERO_NAME;
+    // V2 true-route saves used the old reveal structure. Resume them at the
+    // beginning of the rebuilt finale so no player is stranded in legacy nodes.
+    if (String(state.nodeId || '').startsWith('v2_true_')) state.nodeId = 'v3_true_awaken_01';
     currentBg = null; currentPortrait = null; currentExpression = 'default';
     activeBg = 'a'; dom.bgA.classList.add('active'); dom.bgB.classList.remove('active');
     setScreen(dom.game);
@@ -617,7 +627,7 @@
       const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false).map(([key]) => key);
       const heroineCount = heroineKeys.filter(key => persistent.endings.includes(key)).length;
       note.textContent = persistent.endings.includes('true')
-        ? 'TRUE SIGNAL 已完成：零点之后，所有人的名字仍被记得。'
+        ? `TRUE SIGNAL 已完成：${state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME} · 世界之外的回答者。`
         : heroineCount === 5
           ? 'TRUE SIGNAL 已建立：回到路线选择，接入“第六频道”。'
           : `再接收 ${5 - heroineCount} 段个人信号，即可拼合真正的时间线。`;
@@ -656,7 +666,7 @@
   function bindEvents() {
     dom.newGame.onclick = () => { audio.ensure(); dom.nameModal.classList.remove('hidden'); setTimeout(() => dom.playerName.select(), 50); };
     dom.confirmName.onclick = () => {
-      const name = dom.playerName.value.trim().slice(0, 8) || '江临';
+      const name = dom.playerName.value.trim().slice(0, 8) || DEFAULT_PLAYER_NAME;
       dom.nameModal.classList.add('hidden'); startGame(newState(name));
     };
     dom.playerName.addEventListener('keydown', e => { if (e.key === 'Enter') dom.confirmName.click(); });
@@ -676,9 +686,10 @@
     $$('[data-close-modal]').forEach(el => el.onclick = closeModal);
     dom.endingTitleBtn.onclick = returnTitle;
     dom.endingRestartBtn.onclick = () => {
-      const player = state?.player || persistent.autoSave?.state?.player || '江临';
+      const player = state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME;
       const next = persistent.autoSave?.state ? clone(persistent.autoSave.state) : newState(player, STORY.routeSelect);
       next.player = player;
+      next.hero = HERO_NAME;
       next.nodeId = STORY.replayStart || STORY.routeSelect;
       next.route = null;
       next.history = state?.history?.slice(-40) || next.history || [];
