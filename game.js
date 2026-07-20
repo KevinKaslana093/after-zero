@@ -13,6 +13,7 @@
     screens: $$('.screen'),
     title: $('#title-screen'), game: $('#game-screen'), ending: $('#ending-screen'),
     newGame: $('#new-game-btn'), continue: $('#continue-btn'), collection: $('#collection-btn'), titleSettings: $('#title-settings-btn'),
+    zeroRoute: $('#zero-route-btn'), zeroError: $('#zero-error'), zeroErrorConfirm: $('#zero-error-confirm'),
     endingPips: $('#ending-pips'), endingCount: $('#ending-count'),
     bgA: $('#bg-a'), bgB: $('#bg-b'), chapterNo: $('#chapter-number'), chapterTitle: $('#chapter-title'),
     portraitWrap: $('#portrait-wrap'), portrait: $('#portrait'), portraitGlow: $('#portrait-glow'), routeTag: $('#route-tag'),
@@ -28,7 +29,7 @@
   const defaults = {
     version: 1,
     settings: { textSpeed: 24, autoDelay: 1700, volume: 32, muted: false, reducedMotion: false },
-    endings: [], read: [], saves: [null, null, null, null, null, null], autoSave: null
+    endings: [], echoes: [], read: [], saves: [null, null, null, null, null, null], autoSave: null, zeroTitleSeen: false
   };
 
   function loadPersistent() {
@@ -40,6 +41,7 @@
         settings: { ...defaults.settings, ...(raw.settings || {}) },
         saves: Array.from({ length: 6 }, (_, i) => raw.saves?.[i] || null),
         endings: Array.isArray(raw.endings) ? raw.endings : [],
+        echoes: Array.isArray(raw.echoes) ? raw.echoes : [],
         read: Array.isArray(raw.read) ? raw.read : []
       };
     } catch (_) { return clone(defaults); }
@@ -58,6 +60,7 @@
   let currentBg = null;
   let currentPortrait = null;
   let currentExpression = 'default';
+  let currentEndingKey = null;
   let modalContext = null;
 
   function savePersistent() {
@@ -229,8 +232,9 @@
 
   function setSpeaker(speaker) {
     const entry = Object.values(STORY.characters).find(c => c.name === speaker);
-    dom.speakerName.textContent = speaker || '旁白';
-    dom.speakerEn.textContent = entry ? entry.en : speaker === '我' ? 'YOU' : speaker === '旁白' ? 'NARRATION' : 'SIGNAL';
+    const isHero = speaker === '我' || speaker === HERO_NAME;
+    dom.speakerName.textContent = isHero ? HERO_NAME : speaker || '旁白';
+    dom.speakerEn.textContent = isHero ? 'JIANG LIN' : entry ? entry.en : speaker === '旁白' ? 'NARRATION' : 'SIGNAL';
   }
 
   function typeLine(text) {
@@ -324,7 +328,7 @@
       showNode(branch?.next || node.fallback, options);
     } else if (node.type === 'routeGate') {
       const trueRoute = node.trueRoute;
-      const trueAvailable = trueRoute && requirementMet(trueRoute.requires)
+      const trueAvailable = trueRoute && state.flags.titleZeroAccess && requirementMet(trueRoute.requires)
         && (!trueRoute.onceEnding || !persistent.endings.includes(trueRoute.onceEnding));
       if (trueAvailable) {
         applyEffect(trueRoute.effect);
@@ -365,6 +369,10 @@
       const keys = Array.isArray(requires.endings) ? requires.endings : [];
       if (!keys.every(key => persistent.endings.includes(key))) return false;
     }
+    if (requires.echoes) {
+      const keys = Array.isArray(requires.echoes) ? requires.echoes : [requires.echoes];
+      if (!keys.every(key => persistent.echoes.includes(key))) return false;
+    }
     return true;
   }
 
@@ -382,7 +390,7 @@
     const strongestSignal = node.routeChoice
       ? Math.max(...node.choices.map(choice => state.affinity[choice.char] || 0))
       : 0;
-    node.choices.forEach((choice, index) => {
+    node.choices.filter(choice => !choice.hiddenUntilUnlocked || choiceUnlocked(choice)).forEach((choice, index) => {
       const button = document.createElement('button');
       const unlocked = legacyFallback ? Boolean(choice.char) : choiceUnlocked(choice);
       const recommended = node.routeChoice && unlocked && strongestSignal > 0
@@ -427,10 +435,18 @@
   function receiveEnding(key) {
     const ending = STORY.endings[key];
     if (!ending) return;
-    const isNew = !persistent.endings.includes(key);
-    if (isNew) persistent.endings.push(key);
-    const replayState = { ...snapshot(), nodeId: STORY.replayStart || STORY.routeSelect, route: null };
-    if (STORY.replayStart) {
+    currentEndingKey = key;
+    const echoKey = ending.echoKey || ending.char || key;
+    const isNew = ending.failure ? !persistent.echoes.includes(echoKey) : !persistent.endings.includes(key);
+    if (ending.failure) {
+      if (isNew) persistent.echoes.push(echoKey);
+    } else if (isNew) persistent.endings.push(key);
+    const replayNode = ending.failure ? ending.rewindStart : (STORY.replayStart || STORY.routeSelect);
+    const replayState = { ...snapshot(), nodeId: replayNode, route: ending.failure ? echoKey : null };
+    if (ending.failure) {
+      Object.keys(replayState.affinity).forEach(name => { replayState.affinity[name] = 0; });
+      replayState.flags = { rewind: true };
+    } else if (STORY.replayStart) {
       Object.keys(replayState.affinity).forEach(name => { replayState.affinity[name] = 0; });
       replayState.flags = {};
     }
@@ -441,17 +457,20 @@
     const bg = STORY.backgrounds[ending.bg];
     const char = STORY.characters[ending.char || key] || STORY.characters.lincheng;
     dom.endingBg.style.backgroundImage = `linear-gradient(90deg, rgba(${char.rgb},.1), transparent), url("${bg.src}")`;
-    dom.endingIndex.textContent = `${String(ending.index).padStart(2, '0')} / ${String(ending.total || 5).padStart(2, '0')}`;
+    dom.endingIndex.textContent = ending.failure ? 'LOST SIGNAL' : `${String(ending.index).padStart(2, '0')} / ${String(ending.total || 5).padStart(2, '0')}`;
     dom.endingTitle.textContent = ending.title;
     dom.endingSubtitle.textContent = ending.subtitle;
     dom.endingQuote.textContent = token(ending.quote);
+    dom.endingTitleBtn.textContent = '返回标题';
+    dom.endingRestartBtn.textContent = ending.failure ? '回溯到信号分歧' : '选择其他信号';
     audio.signal();
     setTimeout(() => toast(isNew ? '新结局已记录至终夜档案' : '已读取结局记录'), 700);
   }
 
   function updateTitleProgress() {
-    const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false).map(([key]) => key);
+    const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
     const heroineCount = heroineKeys.filter(key => persistent.endings.includes(key)).length;
+    const zeroUnlocked = heroineCount >= 5 && !persistent.endings.includes('true');
     dom.endingPips.innerHTML = '';
     for (let i = 1; i <= 5; i++) {
       const pip = document.createElement('i');
@@ -462,6 +481,34 @@
     dom.continue.disabled = !persistent.autoSave;
     dom.newGame.querySelector('span').textContent = persistent.endings.includes('true') ? 'ANSWER AGAIN' : 'NEW SIGNAL';
     dom.newGame.querySelector('b').textContent = persistent.endings.includes('true') ? '再次回答' : '开始新故事';
+    dom.zeroRoute.hidden = !zeroUnlocked || !persistent.zeroTitleSeen;
+    dom.title.classList.toggle('zero-unsealed', (zeroUnlocked && persistent.zeroTitleSeen) || persistent.endings.includes('true'));
+  }
+
+  function playZeroTitleUnlock() {
+    const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
+    const unlocked = heroineKeys.every(key => persistent.endings.includes(key)) && !persistent.endings.includes('true');
+    if (!unlocked || persistent.zeroTitleSeen) return;
+    persistent.zeroTitleSeen = true;
+    savePersistent();
+    dom.zeroRoute.hidden = true;
+    dom.title.classList.add('zero-unsealed', 'zero-corrupting');
+    audio.ensure();
+    [0, 110, 260, 470, 760, 1080].forEach((delay, index) => setTimeout(() => audio.tone(index % 2 ? 83 : 47, .11, .025, 'sawtooth'), delay));
+    setTimeout(() => {
+      dom.title.classList.remove('zero-corrupting');
+      dom.zeroError.hidden = false;
+      dom.zeroErrorConfirm.focus();
+    }, 2400);
+  }
+
+  function enterZeroRoute() {
+    audio.signal();
+    const player = persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME;
+    const next = newState(player, 'v3_true_awaken_01');
+    next.route = 'true';
+    next.flags.trueSignal = true;
+    startGame(next);
   }
 
   function startGame(gameState) {
@@ -486,6 +533,7 @@
     updateTitleProgress();
     setBackground('rooftop');
     setScreen(dom.title);
+    setTimeout(playZeroTitleUnlock, 720);
   }
 
   function openModal(kicker, title, render, context = null) {
@@ -572,7 +620,7 @@
       if (!state.history.length) list.innerHTML = '<p style="color:#91a6b4">还没有可回看的内容。</p>';
       state.history.slice().reverse().forEach(item => {
         const el = document.createElement('article'); el.className = 'log-item';
-        const b = document.createElement('b'); b.textContent = item.speaker;
+        const b = document.createElement('b'); b.textContent = item.speaker === '我' ? HERO_NAME : item.speaker;
         const p = document.createElement('p'); p.textContent = item.text;
         el.append(b, p); list.appendChild(el);
       });
@@ -614,17 +662,17 @@
   function openArchive() {
     openModal('TERMINAL ARCHIVE', '终夜档案', body => {
       const grid = document.createElement('div'); grid.className = 'archive-grid';
-      Object.entries(STORY.endings).sort((a,b) => a[1].index - b[1].index).forEach(([key, ending]) => {
-        const unlocked = persistent.endings.includes(key);
+      Object.entries(STORY.endings).filter(([, ending]) => ending.archive !== false).sort((a,b) => a[1].index - b[1].index).forEach(([key, ending]) => {
+        const unlocked = ending.failure ? persistent.echoes.includes(ending.echoKey || ending.char || key) : persistent.endings.includes(key);
         const char = STORY.characters[ending.char || key] || STORY.characters.lincheng;
         const card = document.createElement('article'); card.className = `archive-card${unlocked ? '' : ' locked'}`;
-        card.innerHTML = `<img src="${ending.image || char.image}" alt=""><div class="archive-info"><small>${ending.routeEnding === false ? 'TRUE SIGNAL' : `SIGNAL ${String(ending.index).padStart(2,'0')}`}</small><h3>${unlocked ? ending.title : '未接收'}</h3></div>`;
+        card.innerHTML = `<img src="${ending.image || char.image}" alt=""><div class="archive-info"><small>${ending.failure ? 'LOST SIGNAL' : ending.routeEnding === false ? 'TRUE SIGNAL' : `SIGNAL ${String(ending.index).padStart(2,'0')}`}</small><h3>${unlocked ? ending.title : '未接收'}</h3></div>`;
         grid.appendChild(card);
       });
       body.appendChild(grid);
       const note = document.createElement('p');
       note.style.cssText = 'margin:24px 0 0;text-align:center;color:#91a6b4;font:400 11px/1.8 "Noto Serif SC",serif;letter-spacing:.1em';
-      const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false).map(([key]) => key);
+      const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
       const heroineCount = heroineKeys.filter(key => persistent.endings.includes(key)).length;
       note.textContent = persistent.endings.includes('true')
         ? `TRUE SIGNAL 已完成：${state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME} · 世界之外的回答者。`
@@ -660,7 +708,11 @@
   }
 
   function preload() {
-    [...Object.values(STORY.backgrounds).map(x => x.src), ...Object.values(STORY.characters).map(x => x.image)].forEach(src => { const img = new Image(); img.src = src; });
+    const sources = STORY.preload || [
+      STORY.backgrounds[STORY.nodes[STORY.start]?.bg]?.src,
+      ...Object.values(STORY.characters).map(character => character.image)
+    ];
+    [...new Set(sources)].forEach(src => { const img = new Image(); img.src = src; });
   }
 
   function bindEvents() {
@@ -673,6 +725,15 @@
     dom.continue.onclick = () => persistent.autoSave && startGame(persistent.autoSave.state);
     dom.collection.onclick = openArchive;
     dom.titleSettings.onclick = openSettings;
+    dom.zeroRoute.onclick = enterZeroRoute;
+    dom.zeroErrorConfirm.onclick = () => {
+      audio.click();
+      dom.zeroError.hidden = true;
+      dom.zeroRoute.hidden = false;
+      dom.zeroRoute.classList.add('just-unsealed');
+      setTimeout(() => dom.zeroRoute.classList.remove('just-unsealed'), 1800);
+      dom.zeroRoute.focus();
+    };
     dom.dialogueBox.addEventListener('click', e => { if (!e.target.closest('.quick-menu')) advance(); });
     dom.advance.onclick = e => { e.stopPropagation(); advance(); };
     $$('.quick-menu button').forEach(button => button.onclick = e => {
@@ -686,6 +747,15 @@
     $$('[data-close-modal]').forEach(el => el.onclick = closeModal);
     dom.endingTitleBtn.onclick = returnTitle;
     dom.endingRestartBtn.onclick = () => {
+      if (STORY.endings[currentEndingKey]?.failure && persistent.autoSave?.state) {
+        startGame(persistent.autoSave.state);
+        return;
+      }
+      const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
+      if (!persistent.endings.includes('true') && heroineKeys.every(key => persistent.endings.includes(key))) {
+        returnTitle();
+        return;
+      }
       const player = state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME;
       const next = persistent.autoSave?.state ? clone(persistent.autoSave.state) : newState(player, STORY.routeSelect);
       next.player = player;
@@ -720,6 +790,7 @@
     preload(); bindEvents(); applySettings(); updateTitleProgress();
     dom.bgA.style.backgroundImage = `url("${STORY.backgrounds.rooftop.src}")`;
     for (const [key, ending] of Object.entries(STORY.endings)) if (!STORY.characters[ending.char || key]) console.warn('Ending without character', key);
+    setTimeout(playZeroTitleUnlock, 900);
   }
 
   init();

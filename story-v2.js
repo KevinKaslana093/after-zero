@@ -16,12 +16,12 @@
   };
 
   const cgScenes = {
-    cg_lincheng: ['assets/cg-lincheng-v2.png', 'FM 00:13 · 只对一人开放的频道'],
-    cg_tangsha: ['assets/cg-tangsha-v2.png', '长汀路 · 雨停在快门之前'],
-    cg_sumi: ['assets/cg-sumi-v2.png', 'FM 00:13 · 双人监听'],
-    cg_guwanqing: ['assets/cg-guwanqing-v2.png', '第二医院 · 晨光诊察'],
-    cg_jiyao: ['assets/cg-jiyao-v2.png', '地下音像库 · 私人证物'],
-    cg_true: ['assets/cg-true-v2.png', 'FM 00:13 天台 · 天亮之后'],
+    cg_lincheng: ['assets/cg-lincheng-v2.webp', 'FM 00:13 · 只对一人开放的频道'],
+    cg_tangsha: ['assets/cg-tangsha-v2.webp', '长汀路 · 雨停在快门之前'],
+    cg_sumi: ['assets/cg-sumi-v2.webp', 'FM 00:13 · 双人监听'],
+    cg_guwanqing: ['assets/cg-guwanqing-v2.webp', '第二医院 · 晨光诊察'],
+    cg_jiyao: ['assets/cg-jiyao-v2.webp', '地下音像库 · 私人证物'],
+    cg_true: ['assets/cg-true-v2.webp', 'FM 00:13 天台 · 天亮之后'],
     cg_sea: ['assets/cg-sea-v3.webp', '临海市外海 · 被覆盖的时间线'],
     cg_zero: ['assets/cg-zero-v3.webp', '零点世界 · 永远的 00:13']
   };
@@ -41,7 +41,7 @@
     total: 6,
     routeEnding: false,
     char: 'lincheng',
-    image: 'assets/cg-true-v2.png',
+    image: 'assets/cg-true-v2.webp',
     title: '零点之后，天会亮',
     subtitle: 'TRUE SIGNAL · CHANNEL 06',
     quote: '“{player}，谢谢你，让我重新存在。”',
@@ -1310,7 +1310,7 @@
 
   addChain('v3_epilogue', chapter('00', '零点之后'), 'cg_true', [
     ['旁白', '03:17重新开始流动。临海市的桥仍会老化，医院仍会迎来病人，照片仍可能褪色，人与人也终有一天会告别。', null],
-    ['旁白', '但此刻，七个人站在电台天台。唐砂设置定时拍摄，苏弥困得靠住林澄，顾晚晴举起保温杯，纪遥把写满名字的新档案抱在怀里。', null],
+    ['旁白', '但此刻，六个人回到电台。唐砂设置定时拍摄，苏弥困得靠住林澄，顾晚晴举起保温杯，纪遥把写满名字的新档案抱在怀里，江临站在她们中间。', null],
     ['林澄', '“FM 00:13最后一个问题。零点之后，你们想去哪里？”', 'lincheng'],
     ['我', '“先去看天亮。”', null],
     ['旁白', '快门亮起前，江临忽然没有按照任何选项行动。他转过身，越过镜头，看向一路陪他走过五种人生的人。', null],
@@ -1318,7 +1318,7 @@
     ['江临', '“后来，是你让我学会自己选择。”', null],
     ['江临', '“{player}，谢谢你，让我重新存在。”', null],
     ['江临', '“接下来的人生，我会自己走。你也要回到你的世界，完成属于你的选择。”', null],
-    ['旁白', '唐砂从相机旁跑回人群。江临最后一次向屏幕伸出手，又在快门落下前收回，转身站进属于他的明天。', null],
+    ['旁白', '唐砂从相机旁跑回五个人身边。江临最后一次向屏幕伸出手，又在快门落下前收回，转身站进属于他的明天。', null],
     ['音效', '咔嚓。', null],
     ['林澄', '“这里是FM 00:13。零点之后，天会亮。”', 'lincheng']
   ], 'ending_true');

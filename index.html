@@ -26,6 +26,7 @@
           <button id="continue-btn" class="menu-button" disabled><span>CONTINUE</span><b>继续上次进度</b></button>
           <button id="collection-btn" class="menu-button"><span>ARCHIVE</span><b>终夜档案</b></button>
           <button id="title-settings-btn" class="menu-button"><span>CONFIG</span><b>系统设置</b></button>
+          <button id="zero-route-btn" class="menu-button zero-route-button" hidden><span>RECEIVE 00:13</span><b>接收不存在的频道</b></button>
         </nav>
         <div class="title-progress">
           <span>RECEIVED ENDINGS</span>
@@ -34,6 +35,21 @@
         </div>
       </div>
       <footer class="title-footer">建议佩戴耳机 · 所有可攻略角色均为成年人</footer>
+      <div id="zero-error" class="zero-error" role="alertdialog" aria-modal="true" aria-labelledby="zero-error-title" hidden>
+        <div class="zero-error-noise"></div>
+        <div class="zero-glitch-bars bars-a"></div>
+        <div class="zero-glitch-bars bars-b"></div>
+        <div class="zero-glitch-bars bars-c"></div>
+        <section class="zero-error-panel">
+          <div class="zero-error-emblem" aria-hidden="true"><i></i><i></i><i></i></div>
+          <p class="zero-error-prelude">终夜档案 · 五段信号接收完成</p>
+          <h2 id="zero-error-title">零点之后</h2>
+          <div class="zero-error-divider"><i></i></div>
+          <p class="zero-error-status"><span>记录完成</span><b>记录校验失败</b></p>
+          <p class="zero-error-log">接收记录 05　/　频道占用 06<br>UNKNOWN CHANNEL · LAST ACTIVE 00:13</p>
+          <button id="zero-error-confirm" type="button">确认异常</button>
+        </section>
+      </div>
     </section>
 
     <section id="game-screen" class="screen" aria-label="游戏画面">
@@ -130,6 +146,7 @@
   <noscript>本游戏需要启用 JavaScript。</noscript>
   <script src="story.js"></script>
   <script src="story-v2.js"></script>
+  <script src="story-v4.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

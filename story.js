@@ -4,35 +4,35 @@
   const CHARACTERS = {
     lincheng: {
       name: '林澄', en: 'LIN CHENG', age: 27, role: '深夜节目主持人',
-      image: 'assets/char-lincheng-v4.png',
+      image: 'assets/char-lincheng-v4.webp',
       expressions: { serious: 'assets/char-lincheng-serious-v1.webp', shy: 'assets/char-lincheng-shy-v1.webp', sad: 'assets/char-lincheng-sad-v1.webp', surprised: 'assets/char-lincheng-surprised-v1.webp' },
       color: '#e9c27d', rgb: '233,194,125',
       bio: '声音比夜色更安静的主持人。她似乎从不对任何意外感到惊讶。'
     },
     tangsha: {
       name: '唐砂', en: 'TANG SHA', age: 22, role: '街头摄影师',
-      image: 'assets/char-tangsha-v4.png',
+      image: 'assets/char-tangsha-v4.webp',
       expressions: { serious: 'assets/char-tangsha-serious-v1.webp', shy: 'assets/char-tangsha-shy-v1.webp', sad: 'assets/char-tangsha-sad-v1.webp', surprised: 'assets/char-tangsha-surprised-v1.webp' },
       color: '#f09a69', rgb: '240,154,105',
       bio: '娇小、话快、行动更快。笑起来像闪光灯一样亮，镜头里却总会留下肉眼看不见的东西。'
     },
     sumi: {
       name: '苏弥', en: 'SU MI', age: 25, role: '声音工程师',
-      image: 'assets/char-sumi-v4.png',
+      image: 'assets/char-sumi-v4.webp',
       expressions: { smile: 'assets/char-sumi-smile-v1.webp', shy: 'assets/char-sumi-shy-v1.webp', focused: 'assets/char-sumi-focused-v1.webp', sad: 'assets/char-sumi-sad-v1.webp' },
       color: '#73cad8', rgb: '115,202,216',
       bio: '常年睡眠不足的无口技术人。嘴上说不相信怪谈，硬盘里却全是异常录音。'
     },
     guwanqing: {
       name: '顾晚晴', en: 'GU WANQING', age: 31, role: '急诊科医生',
-      image: 'assets/char-guwanqing-v4.png',
+      image: 'assets/char-guwanqing-v4.webp',
       expressions: { teasing: 'assets/char-guwanqing-teasing-v1.webp', shy: 'assets/char-guwanqing-shy-v1.webp', worried: 'assets/char-guwanqing-worried-v1.webp', serious_open: 'assets/char-guwanqing-serious_open-v1.webp' },
       color: '#d68c9c', rgb: '214,140,156',
       bio: '总是眯眼微笑的温柔年上医生。她救过很多人，却从不谈自己为何害怕凌晨三点。'
     },
     jiyao: {
       name: '纪遥', en: 'JI YAO', age: 24, role: '都市民俗研究者',
-      image: 'assets/char-jiyao-v4.png',
+      image: 'assets/char-jiyao-v4.webp',
       expressions: { serious: 'assets/char-jiyao-serious-v1.webp', mischief: 'assets/char-jiyao-mischief-v1.webp', shy: 'assets/char-jiyao-shy-v1.webp', sad: 'assets/char-jiyao-sad-v1.webp' },
       color: '#b9a3ef', rgb: '185,163,239',
       bio: '眼神灵动、古灵精怪的年轻研究者。她把禁忌当线索，也把玩笑当成掩饰。'
