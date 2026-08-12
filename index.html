@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <meta name="description" content="《零点之后》——都市怪谈×深夜电台男性向视觉小说">
   <title>零点之后 · AFTER ZERO</title>
-  <link rel="stylesheet" href="styles.css?v=4.1.0">
+  <link rel="stylesheet" href="styles.css?v=4.2.0">
 </head>
 <body>
   <main id="app">
@@ -34,7 +34,7 @@
           <b id="ending-count">0 / 5</b>
         </div>
       </div>
-      <footer class="title-footer"><span>建议佩戴耳机 · 所有可攻略角色均为成年人</span><b>V4.1 · SIGNAL ARCHIVE</b></footer>
+      <footer class="title-footer"><span>建议佩戴耳机 · 所有可攻略角色均为成年人</span><b>V4.2 · CHANNEL DECODER</b></footer>
       <div id="zero-error" class="zero-error" role="alertdialog" aria-modal="true" aria-labelledby="zero-error-title" hidden>
         <div class="zero-error-noise"></div>
         <div class="zero-glitch-bars bars-a"></div>
@@ -151,13 +151,29 @@
       </section>
     </div>
 
+    <div id="decoder-modal" class="decoder-modal hidden" role="dialog" aria-modal="true" aria-labelledby="decoder-title">
+      <div class="decoder-backdrop"></div>
+      <section class="decoder-console">
+        <header>
+          <div><small>FM 00:13 · MANUAL CROSS-CHECK</small><h2 id="decoder-title">第六频道解码</h2></div>
+          <span id="decoder-stage">PHASE 01 / 02</span>
+        </header>
+        <div class="decoder-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div id="decoder-body" class="decoder-body"></div>
+        <footer>
+          <div class="decoder-integrity"><span>INTEGRITY</span><div><i id="decoder-integrity-bar"></i></div><b id="decoder-integrity-value">100%</b></div>
+          <button id="decoder-abort" type="button">暂时退出</button>
+        </footer>
+      </section>
+    </div>
+
     <div id="toast" class="toast" role="status"></div>
   </main>
 
   <noscript>本游戏需要启用 JavaScript。</noscript>
-  <script src="story.js?v=4.1.0"></script>
-  <script src="story-v2.js?v=4.1.0"></script>
-  <script src="story-v4.js?v=4.1.0"></script>
-  <script src="game.js?v=4.1.0"></script>
+  <script src="story.js?v=4.2.0"></script>
+  <script src="story-v2.js?v=4.2.0"></script>
+  <script src="story-v4.js?v=4.2.0"></script>
+  <script src="game.js?v=4.2.0"></script>
 </body>
 </html>

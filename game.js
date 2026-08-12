@@ -8,6 +8,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clone = value => JSON.parse(JSON.stringify(value));
+  const escapeHTML = value => String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
   const dom = {
     screens: $$('.screen'),
@@ -25,13 +26,16 @@
     nameModal: $('#name-modal'), playerName: $('#player-name'), confirmName: $('#confirm-name-btn'),
     endingBg: $('#ending-bg'), endingIndex: $('#ending-index'), endingTitle: $('#ending-title'), endingSubtitle: $('#ending-subtitle'), endingQuote: $('#ending-quote'),
     endingEvidence: $('#ending-evidence'), endingEvidenceTitle: $('#ending-evidence-title'), endingEvidenceMeta: $('#ending-evidence-meta'),
+    decoderModal: $('#decoder-modal'), decoderBody: $('#decoder-body'), decoderStage: $('#decoder-stage'),
+    decoderIntegrityBar: $('#decoder-integrity-bar'), decoderIntegrityValue: $('#decoder-integrity-value'), decoderAbort: $('#decoder-abort'),
     endingTitleBtn: $('#ending-title-btn'), endingRestartBtn: $('#ending-restart-btn'), toast: $('#toast')
   };
 
   const defaults = {
     version: 1,
     settings: { textSpeed: 24, autoDelay: 1700, volume: 32, muted: false, reducedMotion: false },
-    endings: [], echoes: [], read: [], saves: [null, null, null, null, null, null], autoSave: null, zeroTitleSeen: false
+    endings: [], echoes: [], read: [], saves: [null, null, null, null, null, null], autoSave: null,
+    zeroTitleSeen: false, decoder: { solved: false, verified: [], attempts: 0 }
   };
 
   function loadPersistent() {
@@ -44,7 +48,12 @@
         saves: Array.from({ length: 6 }, (_, i) => raw.saves?.[i] || null),
         endings: Array.isArray(raw.endings) ? raw.endings : [],
         echoes: Array.isArray(raw.echoes) ? raw.echoes : [],
-        read: Array.isArray(raw.read) ? raw.read : []
+        read: Array.isArray(raw.read) ? raw.read : [],
+        decoder: {
+          solved: Boolean(raw.decoder?.solved || (Array.isArray(raw.endings) && raw.endings.includes('true'))),
+          verified: Array.isArray(raw.decoder?.verified) ? raw.decoder.verified : [],
+          attempts: Math.max(0, Number(raw.decoder?.attempts) || 0)
+        }
       };
     } catch (_) { return clone(defaults); }
   }
@@ -66,6 +75,7 @@
   let modalContext = null;
   let signalEventTimer = null;
   let lastSignalCueAt = 0;
+  let decoderSession = null;
 
   function savePersistent() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent)); } catch (_) {}
@@ -197,7 +207,7 @@
   function token(text = '') {
     return String(text)
       .replaceAll('{hero}', state?.hero || HERO_NAME)
-      .replaceAll('{player}', state?.player || DEFAULT_PLAYER_NAME);
+      .replaceAll('{player}', state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME);
   }
 
   function setScreen(target) {
@@ -550,7 +560,7 @@
   function updateTitleProgress() {
     const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
     const heroineCount = heroineKeys.filter(key => persistent.endings.includes(key)).length;
-    const zeroUnlocked = heroineCount >= 5 && !persistent.endings.includes('true');
+    const zeroReady = heroineCount >= 5 && !persistent.endings.includes('true');
     dom.endingPips.innerHTML = '';
     for (let i = 1; i <= 5; i++) {
       const pip = document.createElement('i');
@@ -561,8 +571,13 @@
     dom.continue.disabled = !persistent.autoSave;
     dom.newGame.querySelector('span').textContent = persistent.endings.includes('true') ? 'ANSWER AGAIN' : 'NEW SIGNAL';
     dom.newGame.querySelector('b').textContent = persistent.endings.includes('true') ? '再次回答' : '开始新故事';
-    dom.zeroRoute.hidden = !zeroUnlocked || !persistent.zeroTitleSeen;
-    dom.title.classList.toggle('zero-unsealed', (zeroUnlocked && persistent.zeroTitleSeen) || persistent.endings.includes('true'));
+    dom.zeroRoute.hidden = !zeroReady || !persistent.zeroTitleSeen;
+    if (zeroReady) {
+      dom.zeroRoute.querySelector('span').textContent = persistent.decoder.solved ? 'RECEIVE 00:13' : 'DECODE 00:13';
+      dom.zeroRoute.querySelector('b').textContent = persistent.decoder.solved ? '接收不存在的频道' : '校验五份信号证物';
+      dom.zeroRoute.classList.toggle('decoder-pending', !persistent.decoder.solved);
+    }
+    dom.title.classList.toggle('zero-unsealed', (zeroReady && persistent.zeroTitleSeen) || persistent.endings.includes('true'));
   }
 
   function playZeroTitleUnlock() {
@@ -583,12 +598,198 @@
   }
 
   function enterZeroRoute() {
+    if (!persistent.decoder.solved && !persistent.endings.includes('true')) {
+      openDecoder();
+      return;
+    }
     audio.signal();
     const player = persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME;
     const next = newState(player, 'v3_true_awaken_01');
     next.route = 'true';
     next.flags.trueSignal = true;
     startGame(next);
+  }
+
+  function decoderEvidenceEntries() {
+    return Object.entries(STORY.endings)
+      .filter(([key, ending]) => key !== 'true' && ending.evidence?.verify && persistent.endings.includes(key))
+      .sort((a, b) => a[1].index - b[1].index);
+  }
+
+  function setDecoderIntegrity(value) {
+    if (!decoderSession) return;
+    decoderSession.integrity = Math.max(13, Math.min(100, value));
+    dom.decoderIntegrityBar.style.width = `${decoderSession.integrity}%`;
+    dom.decoderIntegrityValue.textContent = `${decoderSession.integrity}%`;
+    dom.decoderModal.classList.toggle('unstable', decoderSession.integrity < 70);
+  }
+
+  function openDecoder() {
+    const entries = decoderEvidenceEntries();
+    if (entries.length < 5) {
+      toast(`缺少 ${5 - entries.length} 份证物，无法建立解码矩阵`);
+      return;
+    }
+    if (!persistent.zeroTitleSeen) {
+      persistent.zeroTitleSeen = true;
+      savePersistent();
+    }
+    if (!dom.modal.classList.contains('hidden')) closeModal();
+    audio.ensure();
+    decoderSession = {
+      entries,
+      verified: new Set(persistent.decoder.verified.filter(code => entries.some(([, ending]) => ending.evidence.code === code))),
+      phase: 1,
+      integrity: Math.max(55, 100 - persistent.decoder.attempts * 5),
+      errors: 0,
+      focusCode: null
+    };
+    dom.decoderModal.classList.remove('hidden', 'success', 'failure', 'unstable');
+    renderDecoderMatrix();
+    requestAnimationFrame(() => $('.decoder-evidence', dom.decoderBody)?.focus());
+  }
+
+  function closeDecoder() {
+    dom.decoderModal.classList.add('hidden');
+    decoderSession = null;
+    updateTitleProgress();
+  }
+
+  function renderDecoderMatrix() {
+    if (!decoderSession) return;
+    dom.decoderStage.textContent = 'PHASE 01 / 02';
+    setDecoderIntegrity(decoderSession.integrity);
+    dom.decoderBody.innerHTML = '';
+    const intro = document.createElement('div'); intro.className = 'decoder-copy';
+    intro.innerHTML = `<small>EVIDENCE MATRIX</small><h3>逐一校验证物字段</h3><p>五份记录都被改写过一次。读取证物，将每条记录恢复到它真正留下的异常值。</p>`;
+    const grid = document.createElement('div'); grid.className = 'decoder-evidence-grid';
+    decoderSession.entries.forEach(([key, ending]) => {
+      const evidence = ending.evidence;
+      const verified = decoderSession.verified.has(evidence.code);
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = `decoder-evidence${verified ? ' verified' : ''}`;
+      button.innerHTML = `<span>${evidence.code}</span><b>${evidence.title}</b><small>${verified ? 'VERIFIED' : 'AWAITING CHECK'}</small><i></i>`;
+      button.onclick = () => renderEvidenceQuestion(key, ending);
+      grid.appendChild(button);
+    });
+    const continueButton = document.createElement('button');
+    continueButton.type = 'button'; continueButton.className = 'decoder-submit';
+    continueButton.disabled = decoderSession.verified.size < decoderSession.entries.length;
+    continueButton.textContent = continueButton.disabled ? `等待校验 · ${decoderSession.verified.size} / 5` : '建立共同字段映射';
+    continueButton.onclick = renderDecoderSynthesis;
+    dom.decoderBody.append(intro, grid, continueButton);
+  }
+
+  function renderEvidenceQuestion(key, ending) {
+    if (!decoderSession) return;
+    const evidence = ending.evidence;
+    decoderSession.focusCode = evidence.code;
+    dom.decoderStage.textContent = `${evidence.code} · FIELD CHECK`;
+    dom.decoderBody.innerHTML = '';
+    const card = document.createElement('article'); card.className = 'decoder-question';
+    const eyebrow = document.createElement('small'); eyebrow.textContent = `${evidence.channel} · ${token(evidence.meta)}`;
+    const title = document.createElement('h3'); title.textContent = evidence.verify.prompt;
+    const clue = document.createElement('p'); clue.textContent = token(evidence.clue);
+    const options = document.createElement('div'); options.className = 'decoder-options';
+    evidence.verify.choices.forEach(([value, label], index) => {
+      const button = document.createElement('button'); button.type = 'button';
+      button.innerHTML = `<span>0${index + 1}</span><b>${escapeHTML(token(label))}</b>`;
+      button.onclick = () => checkEvidenceAnswer(evidence, value, button);
+      options.appendChild(button);
+    });
+    const back = document.createElement('button'); back.type = 'button'; back.className = 'decoder-back'; back.textContent = '← 返回证物矩阵'; back.onclick = renderDecoderMatrix;
+    card.append(eyebrow, title, clue, options, back); dom.decoderBody.appendChild(card);
+    requestAnimationFrame(() => $('.decoder-options button', dom.decoderBody)?.focus());
+  }
+
+  function checkEvidenceAnswer(evidence, value, button) {
+    if (!decoderSession) return;
+    if (value === evidence.verify.answer) {
+      decoderSession.verified.add(evidence.code);
+      persistent.decoder.verified = [...decoderSession.verified];
+      savePersistent();
+      button.classList.add('correct');
+      audio.evidence(Number(evidence.code.slice(-1)) || 1);
+      setTimeout(renderDecoderMatrix, 520);
+      return;
+    }
+    decoderSession.errors += 1;
+    persistent.decoder.attempts += 1;
+    savePersistent();
+    setDecoderIntegrity(decoderSession.integrity - 13);
+    button.classList.remove('wrong'); void button.offsetWidth; button.classList.add('wrong');
+    audio.noise(.34, .03, decoderSession.errors % 2 ? -.6 : .6);
+    const hint = $('.decoder-question > p');
+    if (decoderSession.errors >= 2 && hint) hint.textContent = `校验提示：${token(evidence.meta)}`;
+    if (decoderSession.integrity <= 13) setTimeout(renderDecoderFailure, 420);
+  }
+
+  function renderDecoderSynthesis() {
+    if (!decoderSession) return;
+    decoderSession.phase = 2;
+    dom.decoderStage.textContent = 'PHASE 02 / 02';
+    dom.decoderBody.innerHTML = '';
+    const copy = document.createElement('div'); copy.className = 'decoder-copy synthesis-copy';
+    copy.innerHTML = `<small>COMMON VARIABLE</small><h3>五个异常共同证明了谁的存在？</h3><p>它有声音却没有声源，在照片外注视，从不存在的端口接入，来自系统之外，并以你的署名成为作者。</p>`;
+    const options = document.createElement('div'); options.className = 'decoder-final-options';
+    [
+      ['zero', '零号', '被系统承认的维护者'],
+      ['jianglin', '江临', '五条时间线的共同变量'],
+      ['player', state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME, '屏幕之外的回答者']
+    ].forEach(([value, label, hint]) => {
+      const button = document.createElement('button'); button.type = 'button';
+      button.innerHTML = `<b>${escapeHTML(label)}</b><span>${hint}</span>`;
+      button.onclick = () => checkSynthesis(value, button);
+      options.appendChild(button);
+    });
+    const back = document.createElement('button'); back.type = 'button'; back.className = 'decoder-back'; back.textContent = '← 重新检查五份证物'; back.onclick = renderDecoderMatrix;
+    dom.decoderBody.append(copy, options, back);
+    requestAnimationFrame(() => $('.decoder-final-options button', dom.decoderBody)?.focus());
+  }
+
+  function checkSynthesis(value, button) {
+    if (!decoderSession) return;
+    if (value !== 'player') {
+      persistent.decoder.attempts += 1;
+      savePersistent();
+      setDecoderIntegrity(decoderSession.integrity - 21);
+      button.classList.remove('wrong'); void button.offsetWidth; button.classList.add('wrong');
+      audio.noise(.58, .04, 0);
+      const copy = $('.synthesis-copy p');
+      if (copy) copy.textContent = value === 'jianglin'
+        ? '江临存在于五条时间线之内；证物记录的却是一个无法被任何时间线登记的人。'
+        : '零号拥有物理位置与系统权限；证物指向的身份没有位置，也没有端口。';
+      if (decoderSession.integrity <= 13) setTimeout(renderDecoderFailure, 420);
+      return;
+    }
+    persistent.decoder.solved = true;
+    persistent.decoder.verified = decoderSession.entries.map(([, ending]) => ending.evidence.code);
+    savePersistent();
+    button.classList.add('correct');
+    audio.duck(1.4); audio.signal();
+    dom.decoderModal.classList.add('success');
+    dom.decoderStage.textContent = 'CHANNEL 06 · FOUND';
+    dom.decoderBody.innerHTML = `<section class="decoder-success"><small>IDENTITY ACCEPTED</small><h3>${escapeHTML(token('{player}'))}，信号已确认</h3><p>五份证物不是在证明某个世界里的人。<br>它们在证明，一直有人从世界之外回答。</p><div><span>05 ARTIFACTS</span><i></i><b>CH 06 OPEN</b></div><button type="button" class="decoder-submit">接收不存在的频道</button></section>`;
+    $('.decoder-submit', dom.decoderBody).onclick = () => {
+      closeDecoder();
+      enterZeroRoute();
+    };
+    requestAnimationFrame(() => $('.decoder-submit', dom.decoderBody)?.focus());
+  }
+
+  function renderDecoderFailure() {
+    if (!decoderSession || persistent.decoder.solved) return;
+    dom.decoderModal.classList.add('failure');
+    dom.decoderStage.textContent = 'SIGNAL LOST · RETRY AVAILABLE';
+    audio.duck(1.1); audio.noise(.8, .045, 0);
+    dom.decoderBody.innerHTML = '<section class="decoder-failure"><small>CROSS-CHECK INTERRUPTED</small><h3>信号完整度低于安全阈值</h3><p>已确认的证物不会丢失。重新稳定频道后，可以从上一次进度继续。</p><div><span>00:13</span><i></i><b>NO CARRIER</b></div><button type="button" class="decoder-submit">重新稳定频道</button></section>';
+    $('.decoder-submit', dom.decoderBody).onclick = () => {
+      decoderSession.integrity = Math.max(65, 100 - persistent.decoder.attempts * 3);
+      decoderSession.errors = 0;
+      dom.decoderModal.classList.remove('failure', 'unstable');
+      renderDecoderMatrix();
+    };
+    requestAnimationFrame(() => $('.decoder-submit', dom.decoderBody)?.focus());
   }
 
   function startGame(gameState) {
@@ -757,6 +958,15 @@
       const decoder = document.createElement('section');
       decoder.className = `evidence-decoder${evidenceKeys.length === 5 ? ' complete' : ''}`;
       decoder.innerHTML = `<header><span>00:13 CROSS-CHECK</span><b>信号交叉校验</b><em>${String(evidenceKeys.length).padStart(2, '0')} / 05</em></header><div class="decoder-track">${[1,2,3,4,5].map(index => `<i class="${evidenceKeys.some(([, ending]) => ending.index === index) ? 'on' : ''}"></i>`).join('')}</div><p>${evidenceKeys.length === 5 ? '五份证物的时间戳完全重合。系统登记五名接收者，却持续占用第六路输入。' : '每个被保留的结局都会留下一个无法由当前世界解释的字段。'}</p>`;
+      if (evidenceKeys.length === 5 && !persistent.endings.includes('true')) {
+        const decode = document.createElement('button');
+        decode.type = 'button'; decode.className = 'archive-decode-button';
+        decode.innerHTML = persistent.decoder.solved
+          ? '<span>CHANNEL 06 READY</span><b>接收不存在的频道</b>'
+          : '<span>MANUAL CROSS-CHECK</span><b>开始第六频道解码</b>';
+        decode.onclick = persistent.decoder.solved ? () => { closeModal(); enterZeroRoute(); } : openDecoder;
+        decoder.appendChild(decode);
+      }
       body.appendChild(decoder);
       const note = document.createElement('p');
       note.style.cssText = 'margin:24px 0 0;text-align:center;color:#91a6b4;font:400 11px/1.8 "Noto Serif SC",serif;letter-spacing:.1em';
@@ -765,7 +975,9 @@
       note.textContent = persistent.endings.includes('true')
         ? `TRUE SIGNAL 已完成：${state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME} · 世界之外的回答者。`
         : heroineCount === 5
-          ? 'TRUE SIGNAL 已建立：回到路线选择，接入“第六频道”。'
+          ? persistent.decoder.solved
+            ? '身份校验完成：第六频道正在等待你的接入。'
+            : '五份证物已回收：完成手动交叉校验，才能定位第六频道。'
           : `再接收 ${5 - heroineCount} 段个人信号，即可拼合真正的时间线。`;
       body.appendChild(note);
     });
@@ -837,6 +1049,7 @@
     dom.collection.onclick = openArchive;
     dom.titleSettings.onclick = openSettings;
     dom.zeroRoute.onclick = enterZeroRoute;
+    dom.decoderAbort.onclick = closeDecoder;
     dom.zeroErrorConfirm.onclick = () => {
       audio.click();
       dom.zeroError.hidden = true;
@@ -884,6 +1097,7 @@
     };
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        if (!dom.decoderModal.classList.contains('hidden')) { closeDecoder(); return; }
         if (!dom.modal.classList.contains('hidden')) closeModal();
         else if (dom.game.classList.contains('active')) openGameMenu();
         return;

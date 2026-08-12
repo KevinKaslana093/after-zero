@@ -40,7 +40,14 @@ for (const [key, ending] of Object.entries(story.endings)) {
   if (!story.backgrounds[ending.bg]) errors.push(`ending ${key} -> missing background ${ending.bg}`);
   if (ending.image) referencedAssets.add(ending.image);
   if (ending.routeEnding !== false && !ending.evidence) errors.push(`ending ${key} has no evidence`);
+  if (ending.evidence?.verify) {
+    const verify = ending.evidence.verify;
+    if (!verify.prompt || !verify.answer || !Array.isArray(verify.choices) || verify.choices.length < 2) errors.push(`ending ${key} has invalid evidence verification`);
+    if (!verify.choices.some(choice => choice[0] === verify.answer)) errors.push(`ending ${key} verification answer is not selectable`);
+  }
 }
+const puzzleEvidence = Object.values(story.endings).filter(ending => ending.evidence?.verify);
+if (puzzleEvidence.length !== 5) errors.push(`decoder requires 5 verifiable artifacts, found ${puzzleEvidence.length}`);
 for (const src of referencedAssets) {
   if (!fs.existsSync(path.join(root, src))) errors.push(`missing asset ${src}`);
 }

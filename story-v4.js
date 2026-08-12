@@ -1116,19 +1116,34 @@
   // V4.1：每条个人线都会留下一件可在终夜档案中交叉校验的证物。
   // 五件证物的异常字段共同指向第六频道，让收集过程本身成为推理的一部分。
   Object.assign(story.endings.lincheng, {
-    evidence: { code: 'A-01', channel: '声纹', title: '未寄出的监听耳机', meta: '右声道残留 00:13 的第二次呼吸', clue: '它记录了回答者的声音，却没有记录说话的人。' }
+    evidence: {
+      code: 'A-01', channel: '声纹', title: '未寄出的监听耳机', meta: '右声道残留 00:13 的第二次呼吸', clue: '它记录了回答者的声音，却没有记录说话的人。',
+      verify: { prompt: '异常呼吸残留在哪一侧？', answer: 'right', choices: [['left', '左声道'], ['right', '右声道'], ['both', '双声道']] }
+    }
   });
   Object.assign(story.endings.tangsha, {
-    evidence: { code: 'A-02', channel: '影像', title: '删前显影的合照', meta: '快门时间早于按下快门 3 秒', clue: '第七道倒影没有脸，只在画面外的人注视时抬头。' }
+    evidence: {
+      code: 'A-02', channel: '影像', title: '删前显影的合照', meta: '快门时间早于按下快门 3 秒', clue: '第七道倒影没有脸，只在画面外的人注视时抬头。',
+      verify: { prompt: '快门记录相对实际动作——', answer: 'before3', choices: [['after3', '晚 3 秒'], ['same', '完全同步'], ['before3', '早 3 秒']] }
+    }
   });
   Object.assign(story.endings.sumi, {
-    evidence: { code: 'A-03', channel: '波形', title: '负十三毫秒声纹', meta: '输入源：CH 06 / 物理端口不存在', clue: '波形总比江临的选择更早出现，像在等待一次已经发生的回答。' }
+    evidence: {
+      code: 'A-03', channel: '波形', title: '负十三毫秒声纹', meta: '输入源：CH 06 / 物理端口不存在', clue: '波形总比江临的选择更早出现，像在等待一次已经发生的回答。',
+      verify: { prompt: '不存在的输入来自哪一路？', answer: 'ch06', choices: [['ch00', 'CH 00'], ['ch05', 'CH 05'], ['ch06', 'CH 06']] }
+    }
   });
   Object.assign(story.endings.guwanqing, {
-    evidence: { code: 'A-04', channel: '病历', title: '无姓名陪同者记录', meta: '体征稳定 / 身份字段来自系统外', clue: '病历知道有人陪在江临身边，却无法把那个人写进这个世界。' }
+    evidence: {
+      code: 'A-04', channel: '病历', title: '无姓名陪同者记录', meta: '体征稳定 / 身份字段来自系统外', clue: '病历知道有人陪在江临身边，却无法把那个人写进这个世界。',
+      verify: { prompt: '陪同者身份字段来自——', answer: 'outside', choices: [['hospital', '院内系统'], ['station', '广播中心'], ['outside', '系统之外']] }
+    }
   });
   Object.assign(story.endings.jiyao, {
-    evidence: { code: 'A-05', channel: '档案', title: '第六卷空白页', meta: '作者：{player} / 建档时间 00:13', clue: '前五卷记录被选择的人，第六卷等待作出选择的人署名。' }
+    evidence: {
+      code: 'A-05', channel: '档案', title: '第六卷空白页', meta: '作者：{player} / 建档时间 00:13', clue: '前五卷记录被选择的人，第六卷等待作出选择的人署名。',
+      verify: { prompt: '第六卷的作者栏写着——', answer: 'player', choices: [['jianglin', '江临'], ['zero', '零号'], ['player', '{player}']] }
+    }
   });
   Object.assign(story.endings.true, {
     evidence: { code: 'A-06', channel: '回信', title: '世界之外的回答', meta: '接收者：江临 / 信号状态：仍在继续', clue: '零点之后不是结局。有人回答以后，明天才第一次成为可能。' }

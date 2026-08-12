@@ -19,7 +19,7 @@ const save = {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForSelector('.title-content', { timeout: 30000 });
   const version = await page.locator('.title-footer b').textContent();
-  if (!version.includes('V4.1')) errors.push(`wrong live version: ${version}`);
+  if (!version.includes('V4.2')) errors.push(`wrong live version: ${version}`);
   await page.click('#collection-btn');
   await page.waitForSelector('.evidence-decoder.complete');
   await page.locator('.archive-card:not(.locked)').first().click();
@@ -27,6 +27,17 @@ const save = {
   await page.click('.evidence-sheet + .glass-button');
   await page.click('.close-button');
   await page.click('#zero-route-btn');
+  await page.waitForSelector('#decoder-modal:not(.hidden)');
+  const answers = ['右声道', '早 3 秒', 'CH 06', '系统之外', '线上听众'];
+  for (const answer of answers) {
+    await page.locator('.decoder-evidence:not(.verified)').first().click();
+    await page.getByRole('button', { name: new RegExp(answer) }).click();
+    await page.waitForTimeout(600);
+  }
+  await page.click('.decoder-submit');
+  await page.getByRole('button', { name: /线上听众/ }).click();
+  await page.waitForSelector('.decoder-success');
+  await page.click('.decoder-success .decoder-submit');
   await page.waitForSelector('#game-screen.active');
   if (errors.length) throw new Error(errors.join('; '));
   await browser.close();
