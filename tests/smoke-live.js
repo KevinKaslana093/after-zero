@@ -16,7 +16,8 @@ const save = {
   page.on('pageerror', error => errors.push(error.message));
   page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
   await page.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
-  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForSelector('.title-content', { timeout: 30000 });
   const version = await page.locator('.title-footer b').textContent();
   if (!version.includes('V4.1')) errors.push(`wrong live version: ${version}`);
   await page.click('#collection-btn');
@@ -24,7 +25,7 @@ const save = {
   await page.locator('.archive-card:not(.locked)').first().click();
   await page.waitForSelector('.evidence-sheet');
   await page.click('.evidence-sheet + .glass-button');
-  await page.click('[data-close-modal]');
+  await page.click('.close-button');
   await page.click('#zero-route-btn');
   await page.waitForSelector('#game-screen.active');
   if (errors.length) throw new Error(errors.join('; '));
