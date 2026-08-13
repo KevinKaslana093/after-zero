@@ -53,16 +53,30 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
   position:fixed; z-index:140; inset:0; display:grid; place-items:center; overflow:hidden;
   background:radial-gradient(circle at 50% 46%,#0b1a2c 0,#050a15 38%,#01030a 76%);
   transition:opacity .36s ease,visibility .36s;
+  clip-path:polygon(0 0,100% 0,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,0 100%);
+  will-change:clip-path;
+  isolation:isolate;
 }
 .boot-screen.complete { opacity:0; visibility:hidden; pointer-events:none; }
 .boot-grid { position:absolute; inset:-20%; opacity:.22; background-image:linear-gradient(rgba(136,220,243,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(136,220,243,.09) 1px,transparent 1px); background-size:46px 46px; transform:perspective(580px) rotateX(64deg) translateY(25%); mask-image:linear-gradient(transparent 8%,#000 50%,transparent 92%); animation:boot-grid-drift 5s linear infinite; }
 .boot-scan { position:absolute; inset:-30% 0; background:linear-gradient(transparent 44%,rgba(136,220,243,.18) 49.7%,rgba(213,247,255,.55) 50%,rgba(136,220,243,.12) 50.4%,transparent 56%); animation:boot-scan 2.1s linear infinite; }
 .boot-noise { position:absolute; inset:0; opacity:.12; background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(255,255,255,.13) 3px,transparent 4px),radial-gradient(circle at 37% 22%,rgba(255,255,255,.65) 0 1px,transparent 2px); background-size:auto,61px 53px; animation:boot-noise .14s steps(2,end) infinite; }
-.boot-transition { position:absolute;z-index:5;inset:-8% 0 -2%;pointer-events:none;transform:translateY(112%);opacity:0;filter:contrast(1.25); }
-.boot-transition::before { content:"";position:absolute;inset:0;background:linear-gradient(to top,#02030a 0 21%,rgba(3,9,20,.96) 29%,rgba(9,32,48,.82) 40%,rgba(136,220,243,.42) 45%,rgba(227,75,104,.38) 47%,transparent 51%); }
-.boot-transition::after { content:"";position:absolute;left:0;right:0;top:43%;height:10%;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(213,247,255,.72) 4px,transparent 6px),linear-gradient(90deg,transparent 2%,rgba(136,220,243,.62) 24%,rgba(227,75,104,.62) 51%,rgba(136,220,243,.58) 77%,transparent 98%);filter:blur(1px);mix-blend-mode:screen; }
-.boot-transition i { position:absolute;top:43%;height:clamp(2px,.6vw,7px);background:linear-gradient(90deg,transparent,var(--cyan-bright),var(--red),transparent);box-shadow:0 0 18px rgba(136,220,243,.7);transform:translateX(-120%); }
-.boot-transition i:nth-child(1){left:0;width:43%;}.boot-transition i:nth-child(2){left:21%;top:47%;width:64%;}.boot-transition i:nth-child(3){left:52%;top:41%;width:38%;}.boot-transition i:nth-child(4){left:8%;top:50%;width:28%;}.boot-transition i:nth-child(5){left:67%;top:52%;width:31%;}
+.boot-transition { position:absolute;z-index:5;inset:0;pointer-events:none;opacity:0;filter:contrast(1.2) saturate(1.2); }
+.boot-transition::before { content:"";position:absolute;inset:0;opacity:0;background:repeating-linear-gradient(0deg,transparent 0 8px,rgba(213,247,255,.17) 9px,transparent 11px),repeating-linear-gradient(90deg,transparent 0 17%,rgba(227,75,104,.14) 17.2%,transparent 17.8%);mix-blend-mode:screen; }
+.boot-transition::after { content:"";position:absolute;right:-2%;bottom:-2%;width:clamp(120px,27vw,390px);height:clamp(84px,22vh,220px);border-top:2px solid rgba(213,247,255,.9);border-left:2px solid rgba(227,75,104,.78);box-shadow:-12px -10px 36px rgba(136,220,243,.2),inset 9px 8px 0 rgba(136,220,243,.08);opacity:0;transform-origin:100% 100%; }
+.boot-transition i { position:absolute;right:var(--right);bottom:var(--bottom);width:var(--width);height:var(--height);border:1px solid rgba(136,220,243,.78);background:linear-gradient(90deg,rgba(213,247,255,.92) 0 7px,transparent 7px 13px,rgba(227,75,104,.82) 13px 20px,transparent 20px) 10px 10px/calc(100% - 20px) 2px no-repeat,linear-gradient(to bottom,rgba(136,220,243,.2) 0 23%,rgba(3,8,17,.84) 23% 100%);box-shadow:0 0 0 1px rgba(227,75,104,.2),0 0 28px rgba(136,220,243,.25),inset 0 0 24px rgba(136,220,243,.08);opacity:0;transform:scale(.28) translate(18px,14px);transform-origin:100% 100%;clip-path:inset(0); }
+.boot-transition i:nth-child(1){--right:-3%;--bottom:-3%;--width:29%;--height:24%;--delay:.01s}
+.boot-transition i:nth-child(2){--right:5%;--bottom:4%;--width:31%;--height:23%;--delay:.13s}
+.boot-transition i:nth-child(3){--right:15%;--bottom:11%;--width:29%;--height:25%;--delay:.25s}
+.boot-transition i:nth-child(4){--right:25%;--bottom:19%;--width:31%;--height:23%;--delay:.37s}
+.boot-transition i:nth-child(5){--right:36%;--bottom:27%;--width:28%;--height:25%;--delay:.49s}
+.boot-transition i:nth-child(6){--right:46%;--bottom:35%;--width:29%;--height:23%;--delay:.61s}
+.boot-transition i:nth-child(7){--right:56%;--bottom:44%;--width:26%;--height:24%;--delay:.73s}
+.boot-transition i:nth-child(8){--right:65%;--bottom:53%;--width:25%;--height:22%;--delay:.85s}
+.boot-transition i:nth-child(9){--right:73%;--bottom:62%;--width:23%;--height:21%;--delay:.97s}
+.boot-transition i:nth-child(10){--right:80%;--bottom:71%;--width:21%;--height:20%;--delay:1.09s}
+.boot-transition i:nth-child(11){--right:86%;--bottom:80%;--width:19%;--height:18%;--delay:1.21s}
+.boot-transition i:nth-child(12){--right:91%;--bottom:88%;--width:17%;--height:17%;--delay:1.33s}
 .boot-terminal { position:relative; width:min(860px,calc(100vw - 48px)); min-height:min(560px,calc(100dvh - 80px)); display:grid; grid-template-rows:auto 1fr auto auto; border:1px solid rgba(136,220,243,.3); background:linear-gradient(145deg,rgba(7,15,29,.72),rgba(2,6,14,.88)); box-shadow:0 40px 140px #000,0 0 80px rgba(136,220,243,.08); overflow:hidden; }
 .boot-terminal::before,.boot-terminal::after { content:""; position:absolute; width:48px; height:48px; border-color:var(--cyan); opacity:.65; }
 .boot-terminal::before { left:12px; top:12px; border-left:1px solid;border-top:1px solid; }
@@ -98,13 +112,16 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .boot-screen.locked .boot-stage time { color:#fff;text-shadow:2px 0 rgba(227,75,104,.6),-2px 0 rgba(60,180,230,.65),0 0 28px rgba(136,220,243,.5); }
 .boot-screen[data-phase="unknown"] .boot-terminal { animation:boot-soft-error .34s steps(2,end) 1; }
 .boot-screen[data-phase="unknown"] .boot-noise { opacity:.24; }
-.boot-screen.exiting .boot-terminal { animation:boot-terminal-fail .86s cubic-bezier(.2,.75,.2,1) forwards; }
+.boot-screen.exiting { animation:boot-window-collapse 1.72s steps(11,end) forwards; }
+.boot-screen:not(.complete).exiting + .title-screen { pointer-events:none; }
+.boot-screen.exiting .boot-terminal { animation:boot-terminal-window-fail 1.54s steps(1,end) forwards; }
 .boot-screen.exiting .boot-grid,.boot-screen.exiting .boot-scan { animation-play-state:paused; }
-.boot-screen.exiting .boot-noise { animation:boot-final-noise .11s steps(2,end) 7; }
-.boot-screen.exiting .boot-transition { opacity:1;animation:boot-burn-up 1.12s cubic-bezier(.42,0,.18,1) .16s forwards; }
-.boot-screen.exiting .boot-transition i { animation:boot-tear-line .52s steps(4,end) forwards; }
-.boot-screen.exiting .boot-transition i:nth-child(2){animation-delay:.08s}.boot-screen.exiting .boot-transition i:nth-child(3){animation-delay:.14s}.boot-screen.exiting .boot-transition i:nth-child(4){animation-delay:.2s}.boot-screen.exiting .boot-transition i:nth-child(5){animation-delay:.27s}
-.boot-screen.title-reveal { background:rgba(1,3,10,.08); }
+.boot-screen.exiting .boot-noise { animation:boot-window-noise .13s steps(2,end) 12; }
+.boot-screen.exiting .boot-transition { opacity:1; }
+.boot-screen.exiting .boot-transition::before { animation:boot-window-scan 1.55s steps(6,end) forwards; }
+.boot-screen.exiting .boot-transition::after { animation:boot-collapse-front 1.5s steps(11,end) forwards; }
+.boot-screen.exiting .boot-transition i { animation:boot-window-pop .35s steps(3,end) var(--delay) forwards; }
+.boot-screen.title-reveal { opacity:.18;transition:opacity .2s steps(2,end),visibility .36s; }
 .boot-screen.title-reveal .boot-terminal,.boot-screen.title-reveal .boot-grid,.boot-screen.title-reveal .boot-scan,.boot-screen.title-reveal #boot-skip { opacity:0; }
 @keyframes boot-grid-drift { to { background-position:0 46px,46px 0; } }
 @keyframes boot-scan { to { transform:translateY(32%); } }
@@ -112,13 +129,24 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 @keyframes boot-orbit { to { transform:rotate(360deg); } }
 @keyframes boot-wave { to { transform:scaleY(.25);opacity:.25; } }
 @keyframes boot-soft-error { 0%,100%{transform:none;filter:none}30%{transform:translateX(3px);filter:hue-rotate(24deg) contrast(1.2)}65%{transform:translateX(-2px);clip-path:inset(18% 0 42%)} }
-@keyframes boot-terminal-fail { 0%{opacity:1;transform:none;filter:none}32%{transform:translateX(4px);filter:contrast(1.35)}46%{transform:translateX(-5px) scaleY(.99);clip-path:inset(0 0 36%)}63%{transform:translateY(-3px);clip-path:inset(24% 0 0);opacity:.78}100%{transform:translateY(-7vh) scale(.985);filter:brightness(2) contrast(1.7);opacity:0} }
-@keyframes boot-final-noise { 0%,100%{transform:none;opacity:.12}50%{transform:translate(7px,-3px);opacity:.72} }
-@keyframes boot-burn-up { 0%{transform:translateY(112%)}58%{transform:translateY(17%)}100%{transform:translateY(-105%)} }
-@keyframes boot-tear-line { 0%{transform:translateX(-120%);opacity:0}28%{opacity:1}100%{transform:translateX(190%);opacity:0} }
+@keyframes boot-window-collapse {
+  0%,4% { clip-path:polygon(0 0,100% 0,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,0 100%); }
+  10% { clip-path:polygon(0 0,100% 0,100% 92%,97% 92%,97% 94%,94% 94%,94% 96%,91% 96%,91% 98%,87% 98%,87% 99%,82% 99%,82% 100%,0 100%); }
+  25% { clip-path:polygon(0 0,100% 0,100% 78%,91% 78%,91% 83%,83% 83%,83% 88%,76% 88%,76% 93%,69% 93%,69% 97%,60% 97%,60% 100%,0 100%); }
+  44% { clip-path:polygon(0 0,100% 0,100% 60%,83% 60%,83% 67%,70% 67%,70% 74%,58% 74%,58% 82%,46% 82%,46% 91%,33% 91%,33% 100%,0 100%); }
+  64% { clip-path:polygon(0 0,100% 0,100% 41%,75% 41%,75% 49%,60% 49%,60% 58%,44% 58%,44% 68%,29% 68%,29% 80%,14% 80%,14% 100%,0 100%); }
+  82% { clip-path:polygon(0 0,100% 0,100% 23%,65% 23%,65% 31%,48% 31%,48% 40%,32% 40%,32% 50%,17% 50%,17% 64%,5% 64%,5% 100%,0 100%); }
+  94% { clip-path:polygon(0 0,100% 0,100% 8%,42% 8%,42% 14%,28% 14%,28% 21%,17% 21%,17% 30%,8% 30%,8% 42%,0 42%,0 100%,0 100%); }
+  100% { clip-path:polygon(0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0); }
+}
+@keyframes boot-terminal-window-fail { 0%,10%{transform:none;filter:none}11%{transform:translate(4px,-1px);filter:contrast(1.28)}17%{transform:translate(-3px,1px)}29%{transform:none;filter:none}43%{transform:translateX(2px);filter:hue-rotate(16deg) contrast(1.18)}57%{transform:translateX(-2px)}70%{transform:none;filter:none}84%{transform:translate(1px,-2px);filter:brightness(1.35)}100%{transform:none;filter:none} }
+@keyframes boot-window-noise { 0%,100%{transform:none;opacity:.14}50%{transform:translate(8px,-4px);opacity:.66} }
+@keyframes boot-window-scan { 0%{opacity:0}12%{opacity:.46}24%{opacity:.08}42%{opacity:.34}60%{opacity:.1}82%{opacity:.48}100%{opacity:0} }
+@keyframes boot-collapse-front { 0%{opacity:0;transform:translate(0,0) scale(.34)}8%{opacity:1}72%{opacity:.78}100%{opacity:0;transform:translate(-87vw,-86vh) scale(.76)} }
+@keyframes boot-window-pop { 0%{opacity:0;transform:scale(.28) translate(18px,14px);filter:brightness(2.2)}20%{opacity:.92;transform:scale(.76);filter:brightness(1.6)}48%{opacity:1;transform:scale(1);filter:none}72%{opacity:.58;clip-path:inset(0 0 38% 16%);transform:translate(-4px,-3px)}100%{opacity:0;clip-path:inset(18% 4% 5% 34%);transform:translate(-8px,-6px) scale(1.04);filter:brightness(2)} }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-screen.exiting .boot-terminal,.boot-screen.exiting .boot-noise,.boot-screen.exiting .boot-transition,.boot-screen.exiting .boot-transition i { animation:none !important; }
+  .boot-screen.exiting,.boot-screen.exiting .boot-terminal,.boot-screen.exiting .boot-noise,.boot-screen.exiting .boot-transition,.boot-screen.exiting .boot-transition::before,.boot-screen.exiting .boot-transition::after,.boot-screen.exiting .boot-transition i { animation:none !important; }
   .boot-screen.exiting .boot-terminal { opacity:0; }
 }
 

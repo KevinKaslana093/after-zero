@@ -165,10 +165,23 @@ async function forceDecoderFailure(page) {
   await bootPage.waitForFunction(() => Number(document.querySelector('#boot-progress-value')?.textContent.replace('%', '')) >= 24);
   await bootPage.screenshot({ path: path.join(output, 'after-zero-boot.png'), fullPage: true });
   await bootPage.waitForSelector('#boot-screen.exiting');
+  await bootPage.waitForTimeout(720);
+  const collapseState = await bootPage.evaluate(() => {
+    const boot = document.querySelector('#boot-screen');
+    const clip = getComputedStyle(boot).clipPath;
+    return {
+      clip,
+      titleActive: document.querySelector('#title-screen')?.classList.contains('active'),
+      visibleWindowCount: [...document.querySelectorAll('.boot-transition i')].filter(windowBox => Number(getComputedStyle(windowBox).opacity) > 0).length
+    };
+  });
+  if (!collapseState.titleActive || collapseState.clip === 'none' || collapseState.clip.includes('100% 100%, 100% 100%, 100% 100%') || collapseState.visibleWindowCount < 1) {
+    throw new Error(`boot window collapse did not expose title diagonally: ${JSON.stringify(collapseState)}`);
+  }
   await bootPage.screenshot({ path: path.join(output, 'after-zero-boot-transition.png'), fullPage: true });
   await waitForBoot(bootPage);
   const version = await bootPage.locator('.title-footer b').textContent();
-  if (!version.includes('V4.5')) throw new Error(`unexpected local version: ${version}`);
+  if (!version.includes('V4.6')) throw new Error(`unexpected local version: ${version}`);
   await bootPage.click('#about-btn');
   await bootPage.waitForSelector('.about-sheet');
   if (!(await bootPage.locator('.about-copy').textContent()).includes('1712')) throw new Error('about screen did not show current story size');

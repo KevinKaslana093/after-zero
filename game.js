@@ -5,7 +5,7 @@
   const STORAGE_KEY = 'after-zero-save-v1';
   const HERO_NAME = '江临';
   const DEFAULT_PLAYER_NAME = '未署名听众';
-  const RELEASE = 'V4.5';
+  const RELEASE = 'V4.6';
   const SITE_URL = 'https://kevinkaslana093.github.io/after-zero/';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -510,10 +510,21 @@
       this.tone(127, .44, .026, 'triangle', { detune: -13, endFrequency: 119, pan: -.25 });
       this.tone(190.5, .48, .016, 'sine', { delay: .06, detune: 7, pan: .3 });
     }
-    bootCrash() {
-      this.noise(.88, .056, 0, { filterType: 'bandpass', frequency: 2450, endFrequency: 170, q: 1.7 });
-      this.tone(310, .76, .054, 'sawtooth', { endFrequency: 37, pan: -.18 });
-      this.tone(47, .84, .045, 'sine', { delay: .06, endFrequency: 31, pan: .2 });
+    bootWindowCollapse() {
+      const steps = [
+        [0, .82, 2350, 184], [.16, .66, 1980, 161], [.33, .48, 1640, 139],
+        [.52, .25, 1310, 117], [.73, 0, 980, 98], [.94, -.28, 720, 82],
+        [1.16, -.54, 510, 67], [1.38, -.8, 330, 49]
+      ];
+      steps.forEach(([delay, pan, high, low], index) => {
+        this.noise(.2 + index * .012, .032 + index * .002, pan, {
+          delay, filterType: 'bandpass', frequency: high, endFrequency: Math.max(90, high * .38), q: 1.45
+        });
+        this.tone(low, .24, .027 + index * .0015, index < 4 ? 'square' : 'triangle', {
+          delay: delay + .025, endFrequency: Math.max(34, low * .62), pan
+        });
+      });
+      this.tone(43, .68, .045, 'sine', { delay: 1.42, endFrequency: 29, pan: -.74 });
     }
     success() {
       [220, 277.18, 329.63].forEach((note, index) => this.tone(note, .58, .034 - index * .004, 'sine', { delay: index * .09, pan: (index - 1) * .22 }));
@@ -794,18 +805,18 @@
     dom.bootStatus.textContent = 'SIGNAL LOCKED';
     dom.bootTime.textContent = '00:13';
     dom.boot.classList.add('locked', 'exiting');
-    if (bootAudioStarted && !immediate) audio.bootCrash();
+    if (bootAudioStarted && !immediate) audio.bootWindowCollapse();
     const reduced = immediate || persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     bootTimers.push(setTimeout(() => {
       dom.boot.classList.add('title-reveal');
-    }, reduced ? 0 : 390));
+    }, reduced ? 0 : 1580));
     bootTimers.push(setTimeout(() => {
       bootComplete = true;
       bootTransitioning = false;
       dom.boot.classList.add('complete');
       dom.newGame.focus();
       setTimeout(playZeroTitleUnlock, 180);
-    }, reduced ? 60 : 1380));
+    }, reduced ? 60 : 1840));
   }
 
   function unlockFromBoot() {

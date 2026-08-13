@@ -23,7 +23,7 @@ const save = {
   }, null, { timeout: 30000 });
   await page.waitForSelector('.title-content', { timeout: 30000 });
   const version = await page.locator('.title-footer b').textContent();
-  if (!version.includes('V4.5')) errors.push(`wrong live version: ${version}`);
+  if (!version.includes('V4.6')) errors.push(`wrong live version: ${version}`);
   await page.click('#collection-btn');
   await page.waitForSelector('.evidence-decoder.complete');
   await page.locator('.archive-card:not(.locked)').first().click();
