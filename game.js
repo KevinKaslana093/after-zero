@@ -111,7 +111,7 @@
       this.ambientVoices = []; this.lfo = null; this.noiseLoopBuffer = null;
       this.musicTimer = null; this.duckTimer = null; this.silenceAudioTimer = null;
       this.motifIndex = 0; this.scene = null; this.profile = null; this.intensity = 'calm';
-      this.lastCue = new Map();
+      this.lastCue = new Map(); this.lastPreviewAt = 0;
       this.sceneProfiles = {
         rooftop: {
           root: 46.25, step: 2320, pad: [1, 1.5, 2, 3],
@@ -660,6 +660,9 @@
       [root, root * 1.25, root * 1.5].forEach((note, i) => this.tone(note, .85, .043 - i * .006, 'sine', { delay: .09 + i * .11, pan: (i - 1) * .24 }));
     }
     preview(bus) {
+      const now = performance.now();
+      if (now - this.lastPreviewAt < 120) return;
+      this.lastPreviewAt = now;
       this.ensure(); this.applyVolume();
       if (bus === 'music') {
         this.musicTone(220, .72, .04, 'sine', { pan: -.18 });

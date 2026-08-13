@@ -51,7 +51,10 @@ const save = {
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.click('#boot-skip');
-  await page.waitForFunction(() => document.querySelector('#boot-screen')?.classList.contains('complete'));
+  await page.waitForFunction(() => {
+    const boot = document.querySelector('#boot-screen');
+    return boot?.classList.contains('complete') && getComputedStyle(boot).visibility === 'hidden';
+  });
   await page.click('#continue-btn');
   await page.waitForFunction(() => document.body.dataset.lastSfx === 'shutter');
   const audioState = await page.evaluate(() => ({ state: document.body.dataset.audioState, scene: document.body.dataset.audioScene, cue: document.body.dataset.lastSfx }));
