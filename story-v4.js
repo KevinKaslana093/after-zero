@@ -1284,6 +1284,46 @@
   insertSilence('v4_gw_crisis_', 'v4_gw_choice4', 'v43_guwanqing_dead_air', 1650);
   insertSilence('v4_jy_core_', 'v4_jy_choice4', 'v43_jiyao_dead_air', 1450);
 
+  // V4.4 NIGHT MIX：只在真正改变空间或叙事状态的瞬间落音效。
+  // 同一种声音可以由旧版和新版剧情共用，避免把文本关键词误判成一路乱响。
+  const soundCues = {
+    onair_09: 'phone', onair_29: 'disconnect', tangsha_after_04: 'shutter',
+    v2_lock_lincheng_01: 'lock', v2_lc_crisis_15: 'phone', v2_lc_crisis_17: 'impact',
+    v2_lc_resonance_02: 'heartbeat', v2_ts_dawn_11: 'shutter', v2_ts_crisis_22: 'shutter',
+    v2_ts_resonance_06: 'shutter', v2_sm_descent_22: 'heartbeat', v2_sm_crisis_01: 'impact',
+    v2_sm_crisis_15: 'heartbeat', v2_gw_crisis_03: 'monitor', v2_gw_crisis_15: 'water',
+    v2_jy_field_25: 'tape', v2_jy_crisis_22: 'glass', v2_true_finale_20: 'shutter',
+    v3_true_awaken_07: 'phone', v3_true_awaken_11: 'mute', v3_rescue_return_03: 'water',
+    v3_final_battle_07: 'phone', v3_epilogue_11: 'shutter',
+
+    v4_d1_arrival_02: 'tape', v4_d1_howl_01: 'feedback', v4_d1_howl_10: 'cut',
+    v4_d1_howl_15: 'disconnect', v4_d1_supper_10: 'shutter', v4_d1_supper_17: 'delete',
+    v4_d2_call_01: 'phone', v4_d2_rescue_01: 'vent', v4_d2_rescue_09: 'tape',
+    v4_d2_rescue_11: 'clock', v4_d3_save_01: 'heartbeat', v4_d3_save_02: 'heartbeat',
+    v4_d3_save_03: 'impact', v4_d4_exterior_06: 'lock', v4_d5_alarm_01: 'powerDown',
+    v4_d5_alarm_02: 'impact', v4_d5_alarm_03: 'impact', v4_lc_precrisis_07: 'lock',
+    v4_lc_precrisis_08: 'impact', v4_lc_bad_02: 'powerDown', v4_lc_good_09: 'heartbeat',
+    v4_ts_open_06: 'glass', v4_ts_tunnel_01: 'water', v4_ts_tunnel_12: 'gate',
+    v4_ts_bad_02: 'gate', v4_ts_bad_04: 'water', v4_ts_good_06: 'vent',
+    v4_ts_good_07: 'glass', v4_sm_open_01: 'mute', v4_sm_bad_01: 'powerUp',
+    v4_gw_crisis_01: 'monitor', v4_gw_bad_06: 'flatline', v4_jy_core_01: 'fire',
+    v4_jy_bad_01: 'fire'
+  };
+  Object.entries(soundCues).forEach(([id, sfx]) => {
+    if (nodes[id]) nodes[id].sfx = sfx;
+  });
+
+  const audioIntensity = {
+    v4_d1_broadcast_01: 'warm', v4_d1_supper_01: 'warm', v4_d2_morning_01: 'warm',
+    v4_d2_rescue_01: 'ending', v4_d3_save_01: 'crisis', v4_d3_after_01: 'warm',
+    v4_d5_alarm_01: 'crisis', v4_lc_good_01: 'ending', v4_ts_good_01: 'ending',
+    v4_sm_good_01: 'ending', v4_gw_good_01: 'ending', v4_jy_good_01: 'ending',
+    v3_true_awaken_01: 'zero', v3_final_battle_01: 'crisis', v3_epilogue_01: 'ending'
+  };
+  Object.entries(audioIntensity).forEach(([id, intensity]) => {
+    if (nodes[id]) nodes[id].audioIntensity = intensity;
+  });
+
   story.preload = [
     backgrounds.v4_rooftop_sunset.src,
     backgrounds.v4_studio_day.src,

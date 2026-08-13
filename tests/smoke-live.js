@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 const url = `https://kevinkaslana093.github.io/after-zero/?release=${Date.now()}`;
 const save = {
   version: 1,
-  settings: { textSpeed: 5, autoDelay: 700, volume: 0, muted: true, reducedMotion: true },
+  settings: { textSpeed: 5, autoDelay: 700, volume: 0, musicVolume: 84, sfxVolume: 88, muted: true, reducedMotion: true },
   endings: ['lincheng', 'tangsha', 'sumi', 'guwanqing', 'jiyao'], echoes: [], read: [], saves: [null,null,null,null,null,null],
   autoSave: { state: { player: '线上听众', hero: '江临', nodeId: 'v4_route_reentry', route: null, affinity: {lincheng:0,tangsha:0,sumi:0,guwanqing:0,jiyao:0}, flags: {}, history: [], startedAt: Date.now(), currentBg: 'v4_studio_signal', currentPortrait: null, currentExpression: 'default' }, time: Date.now() },
   zeroTitleSeen: true
@@ -23,7 +23,7 @@ const save = {
   }, null, { timeout: 30000 });
   await page.waitForSelector('.title-content', { timeout: 30000 });
   const version = await page.locator('.title-footer b').textContent();
-  if (!version.includes('V4.3')) errors.push(`wrong live version: ${version}`);
+  if (!version.includes('V4.4')) errors.push(`wrong live version: ${version}`);
   await page.click('#collection-btn');
   await page.waitForSelector('.evidence-decoder.complete');
   await page.locator('.archive-card:not(.locked)').first().click();
@@ -43,6 +43,19 @@ const save = {
   await page.waitForSelector('.decoder-success');
   await page.click('.decoder-success .decoder-submit');
   await page.waitForSelector('#game-screen.active');
+  await page.evaluate(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), {
+    ...save,
+    settings: { ...save.settings, volume: 42, musicVolume: 84, sfxVolume: 88, muted: false },
+    endings: [], zeroTitleSeen: false,
+    autoSave: { ...save.autoSave, state: { ...save.autoSave.state, nodeId: 'v4_d1_supper_10', currentBg: 'v4_convenience' } }
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.click('#boot-skip');
+  await page.waitForFunction(() => document.querySelector('#boot-screen')?.classList.contains('complete'));
+  await page.click('#continue-btn');
+  await page.waitForFunction(() => document.body.dataset.lastSfx === 'shutter');
+  const audioState = await page.evaluate(() => ({ state: document.body.dataset.audioState, scene: document.body.dataset.audioScene, cue: document.body.dataset.lastSfx }));
+  if (audioState.state !== 'active' || audioState.scene !== 'street' || audioState.cue !== 'shutter') errors.push(`wrong live audio state: ${JSON.stringify(audioState)}`);
   if (errors.length) throw new Error(errors.join('; '));
   await browser.close();
   console.log(`Live smoke valid: ${url}`);

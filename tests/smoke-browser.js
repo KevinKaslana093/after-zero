@@ -6,7 +6,7 @@ const output = path.resolve(root, '..', '..', '..', 'outputs');
 const url = `file:///${path.join(root, 'index.html').replace(/\\/g, '/')}`;
 const save = {
   version: 1,
-  settings: { textSpeed: 5, autoDelay: 700, volume: 0, muted: true, reducedMotion: true },
+  settings: { textSpeed: 5, autoDelay: 700, volume: 0, musicVolume: 84, sfxVolume: 88, muted: true, reducedMotion: true },
   endings: ['lincheng', 'tangsha', 'sumi', 'guwanqing', 'jiyao'], echoes: [], read: [], saves: [null,null,null,null,null,null],
   autoSave: { state: { player: '测试听众', hero: '江临', nodeId: 'v4_route_reentry', route: null, affinity: {lincheng:0,tangsha:0,sumi:0,guwanqing:0,jiyao:0}, flags: {}, history: [], startedAt: Date.now(), currentBg: 'v4_studio_signal', currentPortrait: null, currentExpression: 'default' }, time: Date.now() },
   zeroTitleSeen: true
@@ -138,12 +138,16 @@ async function forceDecoderFailure(page) {
   await bootPage.screenshot({ path: path.join(output, 'after-zero-boot.png'), fullPage: true });
   await waitForBoot(bootPage);
   const version = await bootPage.locator('.title-footer b').textContent();
-  if (!version.includes('V4.3')) throw new Error(`unexpected local version: ${version}`);
+  if (!version.includes('V4.4')) throw new Error(`unexpected local version: ${version}`);
   await bootPage.click('#about-btn');
   await bootPage.waitForSelector('.about-sheet');
   if (!(await bootPage.locator('.about-copy').textContent()).includes('1712')) throw new Error('about screen did not show current story size');
   await bootPage.click('.close-button');
   await bootPage.click('#title-settings-btn');
+  const settingLabels = await bootPage.locator('.setting-row label').allTextContents();
+  for (const label of ['总音量', '背景音乐', '剧情音效', '静音']) {
+    if (!settingLabels.includes(label)) throw new Error(`missing audio setting: ${label}`);
+  }
   const reset = bootPage.locator('.danger-reset');
   await reset.click();
   if (!(await reset.textContent()).includes('再次点击')) throw new Error('progress reset did not require confirmation');
@@ -195,6 +199,30 @@ async function forceDecoderFailure(page) {
   await silencePage.waitForSelector('#choice-layer:not(.hidden)', { timeout: 4000 });
   await silencePage.close();
 
+  const audioPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const audioSave = JSON.parse(JSON.stringify(save));
+  audioSave.settings = { textSpeed: 5, autoDelay: 700, volume: 42, musicVolume: 84, sfxVolume: 88, muted: false, reducedMotion: true };
+  audioSave.endings = [];
+  audioSave.zeroTitleSeen = false;
+  audioSave.autoSave.state.nodeId = 'v4_d1_supper_10';
+  audioSave.autoSave.state.currentBg = 'v4_convenience';
+  await audioPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), audioSave);
+  await audioPage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(audioPage);
+  await audioPage.click('#continue-btn');
+  await audioPage.waitForFunction(() => document.body.dataset.lastSfx === 'shutter');
+  const audioState = await audioPage.evaluate(() => ({
+    state: document.body.dataset.audioState,
+    scene: document.body.dataset.audioScene,
+    intensity: document.body.dataset.audioIntensity,
+    mix: document.body.dataset.audioMix,
+    cue: document.body.dataset.lastSfx
+  }));
+  if (audioState.state !== 'active' || audioState.scene !== 'street' || audioState.cue !== 'shutter') {
+    throw new Error(`audio scene graph did not activate: ${JSON.stringify(audioState)}`);
+  }
+  await audioPage.close();
+
   const sharePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const shareSave = JSON.parse(JSON.stringify(save));
   shareSave.endings = [];
@@ -212,5 +240,5 @@ async function forceDecoderFailure(page) {
   await sharePage.screenshot({ path: path.join(output, 'after-zero-share-card.png'), fullPage: true });
   await sharePage.close();
   await browser.close();
-  console.log(`Browser smoke valid: boot, ${scenarios.length} responsive decoder views, aftermath, silence, share card, full puzzle flow, TRUE SIGNAL entry, and zero-channel cue.`);
+  console.log(`Browser smoke valid: boot, ${scenarios.length} responsive decoder views, dynamic audio scene and cue, aftermath, silence, share card, full puzzle flow, TRUE SIGNAL entry, and zero-channel cue.`);
 })().catch(error => { console.error(error); process.exit(1); });

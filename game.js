@@ -5,7 +5,7 @@
   const STORAGE_KEY = 'after-zero-save-v1';
   const HERO_NAME = '江临';
   const DEFAULT_PLAYER_NAME = '未署名听众';
-  const RELEASE = 'V4.3';
+  const RELEASE = 'V4.4';
   const SITE_URL = 'https://kevinkaslana093.github.io/after-zero/';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -38,7 +38,11 @@
 
   const defaults = {
     version: 1,
-    settings: { textSpeed: 24, autoDelay: 1700, volume: 32, muted: false, reducedMotion: false },
+    settings: {
+      textSpeed: 24, autoDelay: 1700, volume: 42,
+      musicVolume: 84, sfxVolume: 88,
+      muted: false, reducedMotion: false
+    },
     endings: [], echoes: [], read: [], saves: [null, null, null, null, null, null], autoSave: null,
     zeroTitleSeen: false, decoder: { solved: false, verified: [], attempts: 0 }
   };
@@ -99,115 +103,578 @@
 
   class AudioEngine {
     constructor() {
-      this.ctx = null; this.master = null; this.ambientVoices = []; this.lfo = null;
-      this.musicTimer = null; this.motifIndex = 0;
+      this.ctx = null;
+      this.master = null; this.limiter = null;
+      this.musicInput = null; this.musicFilter = null; this.musicEnergy = null;
+      this.musicBus = null; this.ambienceBus = null; this.sfxBus = null;
+      this.musicDuck = null; this.ambienceDuck = null; this.sfxDuck = null;
+      this.ambientVoices = []; this.lfo = null; this.noiseLoopBuffer = null;
+      this.musicTimer = null; this.duckTimer = null; this.silenceAudioTimer = null;
+      this.motifIndex = 0; this.scene = null; this.profile = null; this.intensity = 'calm';
+      this.lastCue = new Map();
+      this.sceneProfiles = {
+        rooftop: {
+          root: 46.25, step: 2320, pad: [1, 1.5, 2, 3],
+          motif: [184.99, 220, 277.18, 329.63, 277.18, 220],
+          noise: [
+            { type: 'lowpass', frequency: 2800, q: .3, level: .052, pan: -.16 },
+            { type: 'bandpass', frequency: 170, q: .55, level: .017, pan: .22 }
+          ]
+        },
+        studio: {
+          root: 55, step: 2060, pad: [1, 1.5, 2, 2.5],
+          motif: [220, 261.63, 329.63, 392, 329.63, 261.63],
+          noise: [
+            { type: 'highpass', frequency: 1450, q: .35, level: .019, pan: -.2 },
+            { type: 'bandpass', frequency: 108, q: 1.1, level: .014, pan: .18 }
+          ]
+        },
+        street: {
+          root: 61.74, step: 2180, pad: [1, 1.5, 2, 2.4],
+          motif: [246.94, 311.13, 369.99, 415.3, 369.99, 311.13],
+          noise: [
+            { type: 'lowpass', frequency: 3400, q: .25, level: .047, pan: .18 },
+            { type: 'bandpass', frequency: 310, q: .7, level: .014, pan: -.28 }
+          ]
+        },
+        hospital: {
+          root: 71.33, step: 2520, pad: [1, 1.333, 2, 2.667],
+          motif: [213.99, 285.3, 320.24, 427.47, 320.24, 285.3],
+          noise: [
+            { type: 'bandpass', frequency: 760, q: .45, level: .021, pan: .12 },
+            { type: 'highpass', frequency: 2300, q: .2, level: .011, pan: -.3 }
+          ]
+        },
+        archive: {
+          root: 41.2, step: 2670, pad: [1, 1.333, 2, 2.667],
+          motif: [164.81, 220, 261.63, 329.63, 261.63, 220],
+          noise: [
+            { type: 'highpass', frequency: 1050, q: .3, level: .024, pan: -.22 },
+            { type: 'bandpass', frequency: 92, q: 1.25, level: .015, pan: .26 }
+          ]
+        },
+        relay: {
+          root: 38.89, step: 1840, pad: [1, 1.414, 2, 2.828],
+          motif: [155.56, 220, 233.08, 311.13, 233.08, 220],
+          noise: [
+            { type: 'bandpass', frequency: 620, q: 1.7, level: .029, pan: -.25 },
+            { type: 'highpass', frequency: 1900, q: .8, level: .018, pan: .28 }
+          ]
+        }
+      };
     }
     ensure() {
       if (this.ctx) {
-        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (this.ctx.state === 'suspended') this.resume();
         return;
       }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.connect(this.ctx.destination);
-      this.applyVolume();
-      this.setAmbience(currentBg || 'rooftop');
+      try {
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.limiter = this.ctx.createDynamicsCompressor();
+        this.musicInput = this.ctx.createGain();
+        this.musicFilter = this.ctx.createBiquadFilter();
+        this.musicEnergy = this.ctx.createGain();
+        this.musicBus = this.ctx.createGain();
+        this.ambienceBus = this.ctx.createGain();
+        this.sfxBus = this.ctx.createGain();
+        this.musicDuck = this.ctx.createGain();
+        this.ambienceDuck = this.ctx.createGain();
+        this.sfxDuck = this.ctx.createGain();
+
+        this.musicFilter.type = 'lowpass';
+        this.musicFilter.frequency.value = 1900;
+        this.musicFilter.Q.value = .42;
+        this.musicEnergy.gain.value = .78;
+        this.musicDuck.gain.value = 1;
+        this.ambienceDuck.gain.value = 1;
+        this.sfxDuck.gain.value = 1;
+        this.master.gain.value = .0001;
+        this.limiter.threshold.value = -16;
+        this.limiter.knee.value = 18;
+        this.limiter.ratio.value = 5;
+        this.limiter.attack.value = .003;
+        this.limiter.release.value = .28;
+
+        this.musicInput.connect(this.musicFilter);
+        this.musicFilter.connect(this.musicEnergy);
+        this.musicEnergy.connect(this.musicBus);
+        this.musicBus.connect(this.musicDuck);
+        this.musicDuck.connect(this.master);
+        this.ambienceBus.connect(this.ambienceDuck);
+        this.ambienceDuck.connect(this.master);
+        this.sfxBus.connect(this.sfxDuck);
+        this.sfxDuck.connect(this.master);
+        this.master.connect(this.limiter);
+        this.limiter.connect(this.ctx.destination);
+
+        this.applyVolume(true);
+        document.body.classList.add('audio-active');
+        document.body.dataset.audioState = 'active';
+        this.setAmbience(currentBg || 'rooftop', true);
+        this.setIntensity(this.intensity, true);
+      } catch (_) {
+        this.ctx = null;
+        document.body.dataset.audioState = 'unavailable';
+      }
     }
-    applyVolume() {
+    clamp(value, fallback) {
+      const number = Number(value);
+      return Math.max(0, Math.min(100, Number.isFinite(number) ? number : fallback));
+    }
+    applyVolume(immediate = false) {
       if (!this.master || !this.ctx) return;
-      const volume = persistent.settings.muted ? 0 : persistent.settings.volume / 100;
-      this.master.gain.setTargetAtTime(volume, this.ctx.currentTime, .04);
+      const now = this.ctx.currentTime;
+      const masterValue = this.clamp(persistent.settings.volume, defaults.settings.volume) / 100;
+      const musicValue = this.clamp(persistent.settings.musicVolume, defaults.settings.musicVolume) / 100;
+      const sfxValue = this.clamp(persistent.settings.sfxVolume, defaults.settings.sfxVolume) / 100;
+      const output = persistent.settings.muted ? 0 : Math.pow(masterValue, .72) * .92;
+      const write = (param, value, time = .055) => {
+        param.cancelScheduledValues(now);
+        if (immediate) param.setValueAtTime(value, now);
+        else param.setTargetAtTime(value, now, time);
+      };
+      write(this.master.gain, output);
+      write(this.musicBus.gain, musicValue * 1.04);
+      write(this.ambienceBus.gain, musicValue * .82);
+      write(this.sfxBus.gain, sfxValue);
+      document.body.dataset.audioMix = `${Math.round(masterValue * 100)}-${Math.round(musicValue * 100)}-${Math.round(sfxValue * 100)}`;
     }
-    tone(frequency, duration = .08, volume = .045, type = 'sine') {
+    route(bus) {
+      if (bus === 'music') return this.musicInput;
+      if (bus === 'ambience') return this.ambienceBus;
+      return this.sfxBus;
+    }
+    voice(frequency, duration = .08, volume = .045, type = 'sine', bus = 'sfx', options = {}) {
       this.ensure();
-      if (!this.ctx || !this.master || persistent.settings.muted) return;
+      if (!this.ctx || !this.master || persistent.settings.muted || !Number.isFinite(frequency) || frequency <= 0) return;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = type; osc.frequency.value = frequency;
-      gain.gain.setValueAtTime(volume, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(.0001, this.ctx.currentTime + duration);
-      osc.connect(gain); gain.connect(this.master); osc.start(); osc.stop(this.ctx.currentTime + duration);
+      const panner = this.ctx.createStereoPanner?.();
+      const delay = Math.max(0, Number(options.delay) || 0);
+      const now = this.ctx.currentTime + delay;
+      const end = now + Math.max(.025, duration);
+      const attack = Math.min(Math.max(.003, Number(options.attack) || .008), duration * .3);
+      const release = Math.min(Math.max(.018, Number(options.release) || Math.min(.18, duration * .38)), duration * .72);
+      const peak = Math.max(.0001, volume);
+      osc.type = type;
+      osc.frequency.setValueAtTime(frequency, now);
+      if (Number.isFinite(options.endFrequency) && options.endFrequency > 0) {
+        osc.frequency.exponentialRampToValueAtTime(options.endFrequency, end);
+      }
+      if (Number.isFinite(options.detune)) osc.detune.value = options.detune;
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(peak, now + attack);
+      gain.gain.setValueAtTime(peak, Math.max(now + attack, end - release));
+      gain.gain.exponentialRampToValueAtTime(.0001, end);
+      osc.connect(gain);
+      if (panner && Number.isFinite(options.pan)) {
+        panner.pan.value = Math.max(-1, Math.min(1, options.pan));
+        gain.connect(panner); panner.connect(this.route(bus));
+      } else gain.connect(this.route(bus));
+      osc.start(now); osc.stop(end + .03);
     }
-    click() { this.tone(520, .055, .03, 'triangle'); }
-    choice() { this.tone(740, .12, .055, 'sine'); setTimeout(() => this.tone(980, .16, .035, 'sine'), 60); }
-    signal() { this.tone(220, .45, .05, 'sine'); setTimeout(() => this.tone(330, .55, .035, 'sine'), 90); }
-    noise(duration = .32, volume = .024, pan = 0) {
+    tone(frequency, duration = .08, volume = .045, type = 'sine', options = {}) {
+      this.voice(frequency, duration, volume, type, 'sfx', options);
+    }
+    musicTone(frequency, duration = 1.1, volume = .03, type = 'sine', options = {}) {
+      this.voice(frequency, duration, volume, type, 'music', options);
+    }
+    noise(duration = .32, volume = .024, pan = 0, options = {}) {
       this.ensure();
       if (!this.ctx || !this.master || persistent.settings.muted) return;
-      const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+      const length = Math.max(1, Math.floor(this.ctx.sampleRate * Math.max(.03, duration)));
       const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+      for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
       const source = this.ctx.createBufferSource();
       const filter = this.ctx.createBiquadFilter();
       const gain = this.ctx.createGain();
       const panner = this.ctx.createStereoPanner?.();
-      source.buffer = buffer; filter.type = 'bandpass'; filter.frequency.value = 780; filter.Q.value = .7;
-      gain.gain.setValueAtTime(volume, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(.0001, this.ctx.currentTime + duration);
+      const delay = Math.max(0, Number(options.delay) || 0);
+      const now = this.ctx.currentTime + delay;
+      const end = now + Math.max(.03, duration);
+      const attack = Math.min(.04, Math.max(.003, Number(options.attack) || .006));
+      source.buffer = buffer;
+      filter.type = options.filterType || 'bandpass';
+      filter.frequency.setValueAtTime(Math.max(30, Number(options.frequency) || 780), now);
+      filter.Q.value = Math.max(.01, Number(options.q) || .7);
+      if (Number.isFinite(options.endFrequency) && options.endFrequency > 0) {
+        filter.frequency.exponentialRampToValueAtTime(options.endFrequency, end);
+      }
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0001, volume), now + attack);
+      gain.gain.exponentialRampToValueAtTime(.0001, end);
       source.connect(filter); filter.connect(gain);
-      if (panner) { panner.pan.value = pan; gain.connect(panner); panner.connect(this.master); }
-      else gain.connect(this.master);
-      source.start();
+      if (panner) {
+        panner.pan.value = Math.max(-1, Math.min(1, pan));
+        gain.connect(panner); panner.connect(this.route(options.bus || 'sfx'));
+      } else gain.connect(this.route(options.bus || 'sfx'));
+      source.start(now); source.stop(end + .03);
+    }
+    later(callback, delay) {
+      return setTimeout(callback, delay);
+    }
+    click() { this.tone(620, .06, .028, 'triangle', { pan: .08 }); }
+    prompt() {
+      this.tone(392, .18, .024, 'sine', { pan: -.18 });
+      this.tone(587.33, .24, .018, 'sine', { delay: .07, pan: .2 });
+    }
+    choice() {
+      this.tone(740, .14, .058, 'sine', { pan: -.12 });
+      this.tone(987.77, .2, .038, 'sine', { delay: .065, pan: .14 });
+      this.noise(.08, .008, 0, { delay: .02, filterType: 'highpass', frequency: 2600 });
+    }
+    signal() {
+      this.tone(110, .62, .06, 'triangle', { endFrequency: 220, pan: -.18 });
+      this.tone(330, .72, .042, 'sine', { delay: .08, pan: .2 });
+      this.noise(.42, .019, 0, { filterType: 'bandpass', frequency: 1180, q: 1.8 });
     }
     whisper() {
-      this.noise(.72, .018, -.78);
-      setTimeout(() => this.tone(82, .48, .018, 'sawtooth'), 90);
-      setTimeout(() => this.noise(.58, .016, .82), 230);
+      this.noise(.78, .029, -.78, { filterType: 'bandpass', frequency: 980, q: 1.3 });
+      this.tone(82, .52, .026, 'sawtooth', { delay: .09, endFrequency: 63, pan: 0 });
+      this.noise(.64, .025, .82, { delay: .22, filterType: 'bandpass', frequency: 1460, q: 1.6 });
     }
     evidence(index = 0) {
       const root = 196 + index * 17;
-      this.tone(root, .34, .045, 'sine');
-      setTimeout(() => this.tone(root * 1.5, .45, .032, 'triangle'), 120);
-      setTimeout(() => this.noise(.16, .009, index % 2 ? .35 : -.35), 40);
+      this.tone(root, .38, .05, 'sine', { pan: -.22 });
+      this.tone(root * 1.5, .5, .036, 'triangle', { delay: .12, pan: .24 });
+      this.noise(.18, .012, index % 2 ? .35 : -.35, { delay: .04, filterType: 'highpass', frequency: 2100 });
     }
-    setAmbience(bg) {
-      if (!this.ctx || !this.master) return;
-      this.ambientVoices.forEach(({ osc }) => { try { osc.stop(); } catch (_) {} });
+    feedback() {
+      this.duck(.58, .16);
+      this.tone(1180, .58, .078, 'sawtooth', { endFrequency: 390 });
+      this.noise(.48, .042, 0, { filterType: 'bandpass', frequency: 1540, q: 2.2 });
+    }
+    cut() {
+      this.tone(270, .34, .055, 'sawtooth', { endFrequency: 42 });
+      this.noise(.12, .025, .2, { delay: .2, filterType: 'highpass', frequency: 1700 });
+    }
+    disconnect() {
+      this.tone(760, .09, .038, 'square', { pan: -.34 });
+      this.tone(310, .2, .03, 'square', { delay: .1, endFrequency: 86, pan: .3 });
+    }
+    shutter() {
+      this.tone(108, .055, .068, 'square');
+      this.noise(.085, .044, .08, { filterType: 'highpass', frequency: 2500, q: .4 });
+      this.tone(58, .12, .034, 'triangle', { delay: .055 });
+    }
+    deleteCue() {
+      this.tone(690, .28, .046, 'square', { endFrequency: 92, pan: -.2 });
+      this.noise(.2, .027, .35, { delay: .08, filterType: 'bandpass', frequency: 1350, q: 1.5 });
+    }
+    phone() {
+      [0, .11, .44, .55].forEach((delay, index) => {
+        this.tone(index % 2 ? 1046.5 : 784, .13, .043, 'sine', { delay, pan: index < 2 ? -.22 : .22 });
+        this.tone(index % 2 ? 523.25 : 392, .13, .025, 'triangle', { delay });
+      });
+    }
+    vent() {
+      this.noise(1.05, .052, -.1, { filterType: 'bandpass', frequency: 150, endFrequency: 960, q: .55 });
+      this.tone(48, .9, .038, 'triangle', { endFrequency: 67, pan: .18 });
+    }
+    tape() {
+      this.tone(86, .075, .046, 'square', { pan: -.18 });
+      this.noise(.72, .025, .16, { delay: .035, filterType: 'highpass', frequency: 1280, q: .35 });
+      this.tone(174, .38, .018, 'triangle', { delay: .09, endFrequency: 168 });
+    }
+    clock() {
+      this.tone(1240, .12, .038, 'sine', { pan: -.15 });
+      this.tone(620, .32, .025, 'sine', { delay: .04, pan: .16 });
+    }
+    heartbeat() {
+      this.tone(58, .17, .07, 'sine', { endFrequency: 42, pan: -.08 });
+      this.tone(51, .2, .058, 'sine', { delay: .24, endFrequency: 38, pan: .08 });
+    }
+    impact() {
+      this.duck(.42, .3);
+      this.tone(43, .62, .09, 'sine', { endFrequency: 31 });
+      this.noise(.48, .058, 0, { filterType: 'lowpass', frequency: 260, q: .8 });
+    }
+    lock() {
+      this.tone(154, .07, .052, 'square', { pan: -.2 });
+      this.noise(.12, .03, .26, { filterType: 'bandpass', frequency: 1850, q: 1.4 });
+      this.tone(94, .16, .032, 'triangle', { delay: .06 });
+    }
+    powerDown() {
+      this.tone(360, .72, .055, 'sawtooth', { endFrequency: 38 });
+      this.noise(.45, .023, 0, { delay: .15, filterType: 'bandpass', frequency: 760, endFrequency: 120 });
+    }
+    powerUp() {
+      this.tone(42, .75, .052, 'triangle', { endFrequency: 336 });
+      this.noise(.5, .021, 0, { filterType: 'bandpass', frequency: 120, endFrequency: 1250 });
+    }
+    water() {
+      this.noise(1.2, .052, -.28, { filterType: 'lowpass', frequency: 2100, q: .25 });
+      this.noise(.95, .032, .34, { delay: .12, filterType: 'bandpass', frequency: 420, q: .7 });
+    }
+    gate() {
+      this.impact();
+      this.noise(.36, .045, .24, { delay: .07, filterType: 'bandpass', frequency: 980, q: 1.2 });
+    }
+    monitor() {
+      this.tone(1046.5, .13, .046, 'sine', { pan: .24 });
+      this.tone(1046.5, .13, .038, 'sine', { delay: .46, pan: .24 });
+      this.heartbeat();
+    }
+    flatline() {
+      this.tone(930, .92, .043, 'sine', { pan: .25 });
+      this.tone(190, .5, .024, 'triangle', { delay: .62, endFrequency: 45, pan: -.2 });
+    }
+    fire() {
+      this.noise(1.1, .046, -.18, { filterType: 'bandpass', frequency: 680, q: .45 });
+      [0, .2, .47, .76].forEach((delay, index) => this.noise(.1, .025, index % 2 ? .36 : -.32, { delay, filterType: 'highpass', frequency: 2100 + index * 260 }));
+    }
+    glass() {
+      this.noise(.5, .05, .12, { filterType: 'highpass', frequency: 2550, q: .55 });
+      this.tone(1720, .3, .04, 'triangle', { pan: -.38 });
+      this.tone(2380, .23, .03, 'sine', { delay: .08, pan: .4 });
+    }
+    muteDrop() {
+      this.duck(.72, .015);
+      this.tone(176, .11, .034, 'square', { endFrequency: 74 });
+    }
+    thunder() {
+      this.noise(1.2, .06, 0, { filterType: 'lowpass', frequency: 210, q: .65 });
+      this.tone(36, 1.25, .052, 'sine', { endFrequency: 29 });
+    }
+    bootLock() {
+      this.tone(110, .42, .043, 'triangle', { endFrequency: 220, pan: -.2 });
+      this.tone(440, .48, .032, 'sine', { delay: .11, pan: .22 });
+      this.tone(880, .22, .023, 'sine', { delay: .28 });
+    }
+    success() {
+      [220, 277.18, 329.63].forEach((note, index) => this.tone(note, .58, .034 - index * .004, 'sine', { delay: index * .09, pan: (index - 1) * .22 }));
+    }
+    failure() {
+      [220, 164.81, 110].forEach((note, index) => this.tone(note, .48, .035, index === 2 ? 'triangle' : 'sine', { delay: index * .13, pan: (1 - index) * .2 }));
+    }
+    playCue(name) {
+      const handlers = {
+        feedback: () => this.feedback(), cut: () => this.cut(), disconnect: () => this.disconnect(),
+        shutter: () => this.shutter(), delete: () => this.deleteCue(), phone: () => this.phone(),
+        vent: () => this.vent(), tape: () => this.tape(), clock: () => this.clock(),
+        heartbeat: () => this.heartbeat(), impact: () => this.impact(), lock: () => this.lock(),
+        powerDown: () => this.powerDown(), powerUp: () => this.powerUp(), water: () => this.water(),
+        gate: () => this.gate(), monitor: () => this.monitor(), flatline: () => this.flatline(),
+        fire: () => this.fire(), glass: () => this.glass(), mute: () => this.muteDrop(),
+        thunder: () => this.thunder(), signal: () => this.signal(), success: () => this.success(), failure: () => this.failure()
+      };
+      if (!handlers[name]) return;
+      const now = performance.now();
+      if (now - (this.lastCue.get(name) || -Infinity) < 180) return;
+      this.lastCue.set(name, now);
+      document.body.dataset.lastSfx = name;
+      handlers[name]();
+    }
+    resolveScene(bg = '') {
+      const key = String(bg).toLowerCase();
+      if (/hospital|guwanqing/.test(key)) return 'hospital';
+      if (/archive|jiyao/.test(key)) return 'archive';
+      if (/street|convenience|tangsha|tunnel/.test(key)) return 'street';
+      if (/relay|seven_channels|sea/.test(key)) return 'relay';
+      if (/studio|lounge|lobby|city|lincheng|sumi|six_rest|five_deleted/.test(key)) return 'studio';
+      return 'rooftop';
+    }
+    getNoiseLoopBuffer() {
+      if (this.noiseLoopBuffer || !this.ctx) return this.noiseLoopBuffer;
+      const length = Math.floor(this.ctx.sampleRate * 4);
+      const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let drift = 0;
+      for (let i = 0; i < length; i++) {
+        drift = drift * .985 + (Math.random() * 2 - 1) * .12;
+        data[i] = Math.max(-1, Math.min(1, drift + (Math.random() * 2 - 1) * .24));
+      }
+      this.noiseLoopBuffer = buffer;
+      return buffer;
+    }
+    stopScene() {
+      clearTimeout(this.musicTimer); this.musicTimer = null;
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      this.ambientVoices.forEach(({ source, gain }) => {
+        try {
+          gain.gain.cancelScheduledValues(now);
+          gain.gain.setTargetAtTime(.0001, now, .1);
+          source.stop(now + .52);
+        } catch (_) {}
+      });
       this.ambientVoices = [];
-      try { this.lfo?.stop(); } catch (_) {}
-      clearInterval(this.musicTimer);
-      const cgMap = { cg_lincheng: 'studio', cg_tangsha: 'street', cg_sumi: 'studio', cg_guwanqing: 'hospital', cg_jiyao: 'archive', cg_true: 'rooftop' };
-      const scene = cgMap[bg] || bg;
-      const frequencies = { rooftop: 46, studio: 55, street: 62, hospital: 71, archive: 41 };
-      const root = frequencies[scene] || 50;
+      try { this.lfo?.stop(now + .55); } catch (_) {}
+      this.lfo = null;
+    }
+    startNoiseLayer(layer) {
+      const source = this.ctx.createBufferSource();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      const panner = this.ctx.createStereoPanner?.();
+      const now = this.ctx.currentTime;
+      source.buffer = this.getNoiseLoopBuffer(); source.loop = true;
+      filter.type = layer.type; filter.frequency.value = layer.frequency; filter.Q.value = layer.q;
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(layer.level, now + .85);
+      source.connect(filter); filter.connect(gain);
+      if (panner) { panner.pan.value = layer.pan || 0; gain.connect(panner); panner.connect(this.ambienceBus); }
+      else gain.connect(this.ambienceBus);
+      source.start(now);
+      this.ambientVoices.push({ source, gain });
+    }
+    setAmbience(bg, force = false) {
+      if (!this.ctx || !this.master) return;
+      const scene = this.resolveScene(bg);
+      if (!force && scene === this.scene && this.ambientVoices.length) {
+        document.body.dataset.audioScene = scene;
+        return;
+      }
+      this.stopScene();
+      this.scene = scene;
+      this.profile = this.sceneProfiles[scene] || this.sceneProfiles.rooftop;
+      this.motifIndex = 0;
+      document.body.dataset.audioScene = scene;
+      const now = this.ctx.currentTime;
+      const levels = [.029, .016, .0095, .005];
       const lfo = this.ctx.createOscillator();
       const lfoGain = this.ctx.createGain();
-      lfo.frequency.value = .08;
-      lfoGain.gain.value = .002;
-      [
-        [1, .008, scene === 'hospital' ? 'sine' : 'triangle'],
-        [1.5, .0045, 'sine'],
-        [2, .0025, 'sine']
-      ].forEach(([ratio, level, type], index) => {
-        const osc = this.ctx.createOscillator();
+      lfo.frequency.value = scene === 'relay' ? .13 : .07;
+      lfoGain.gain.value = scene === 'relay' ? .0024 : .0015;
+      this.profile.pad.forEach((ratio, index) => {
+        const source = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        osc.type = type; osc.frequency.value = root * ratio; gain.gain.value = level;
+        source.type = index === 0 && scene !== 'hospital' ? 'triangle' : 'sine';
+        source.frequency.value = this.profile.root * ratio;
+        gain.gain.setValueAtTime(.0001, now);
+        gain.gain.exponentialRampToValueAtTime(levels[index], now + .95 + index * .12);
         if (index === 0) { lfo.connect(lfoGain); lfoGain.connect(gain.gain); }
-        osc.connect(gain); gain.connect(this.master); osc.start();
-        this.ambientVoices.push({ osc, gain, level });
+        source.connect(gain); gain.connect(this.musicInput); source.start(now);
+        this.ambientVoices.push({ source, gain });
       });
-      lfo.start(); this.lfo = lfo;
-
-      const motifs = {
-        rooftop: [184, 220, 277, 220], studio: [220, 330, 392, 330],
-        street: [247, 311, 370, 311], hospital: [213, 284, 320, 284], archive: [165, 220, 262, 220]
-      };
-      const notes = motifs[scene] || motifs.rooftop;
-      this.motifIndex = 0;
-      this.musicTimer = setInterval(() => {
-        if (!persistent.settings.muted) this.tone(notes[this.motifIndex++ % notes.length], 1.35, .011, 'sine');
-      }, 2600);
+      lfo.start(now); this.lfo = lfo;
+      this.profile.noise.forEach(layer => this.startNoiseLayer(layer));
+      this.scheduleMusic(620);
     }
-    duck(duration = .82) {
-      if (!this.ctx) return;
-      this.ambientVoices.forEach(({ gain, level }) => {
-        gain.gain.cancelScheduledValues(this.ctx.currentTime);
-        gain.gain.setTargetAtTime(.0001, this.ctx.currentTime, .025);
-        gain.gain.setTargetAtTime(level, this.ctx.currentTime + duration, .18);
+    playMusicBeat() {
+      if (!this.profile || persistent.settings.muted || document.hidden) return;
+      const index = this.motifIndex++;
+      const note = this.profile.motif[index % this.profile.motif.length];
+      const levels = { calm: .032, warm: .039, tension: .041, crisis: .045, zero: .026, ending: .038, loss: .02 };
+      const durations = { calm: 1.5, warm: 1.85, tension: 1.15, crisis: .72, zero: 1.35, ending: 2.1, loss: 1.8 };
+      const level = levels[this.intensity] || levels.calm;
+      this.musicTone(note, durations[this.intensity] || durations.calm, level, this.intensity === 'zero' ? 'triangle' : 'sine', { pan: [-.26, .18, -.08, .28][index % 4] });
+      if (index % 2 === 0) this.musicTone(this.profile.root * 2, .8, level * .62, 'triangle', { pan: -.12 });
+      if (this.intensity === 'warm' && index % 2) this.musicTone(note * 1.25, 1.55, level * .48, 'sine', { delay: .08, pan: .24 });
+      if (this.intensity === 'tension' || this.intensity === 'crisis') {
+        this.musicTone(this.profile.root * (index % 4 === 3 ? 1.5 : 1), this.intensity === 'crisis' ? .42 : .65, level * .78, 'triangle', { pan: index % 2 ? .18 : -.18 });
+      }
+      if (this.intensity === 'zero' && index % 3 === 2) {
+        this.musicTone(note / 2, .5, .018, 'sawtooth', { detune: -13, endFrequency: note / 2.18, pan: .32 });
+      }
+    }
+    scheduleMusic(delay) {
+      clearTimeout(this.musicTimer);
+      if (!this.ctx || !this.profile || document.hidden) { this.musicTimer = null; return; }
+      const factors = { calm: 1, warm: 1.08, tension: .76, crisis: .48, zero: .88, ending: 1.28, loss: 1.42 };
+      const wait = Number.isFinite(delay) ? delay : this.profile.step * (factors[this.intensity] || 1);
+      this.musicTimer = setTimeout(() => {
+        this.playMusicBeat();
+        this.scheduleMusic();
+      }, Math.max(420, wait));
+    }
+    setIntensity(mode = 'calm', immediate = false) {
+      const allowed = new Set(['calm', 'warm', 'tension', 'crisis', 'zero', 'ending', 'loss']);
+      const next = allowed.has(mode) ? mode : 'calm';
+      const changed = this.intensity !== next;
+      this.intensity = next;
+      document.body.dataset.audioIntensity = next;
+      if (!this.ctx || !this.musicFilter || (!changed && !immediate)) return;
+      const now = this.ctx.currentTime;
+      const cutoffs = { calm: 1900, warm: 2800, tension: 3500, crisis: 5200, zero: 920, ending: 3200, loss: 1250 };
+      const energy = { calm: .82, warm: .94, tension: 1, crisis: 1.1, zero: .7, ending: .96, loss: .58 };
+      this.musicFilter.frequency.cancelScheduledValues(now);
+      this.musicEnergy.gain.cancelScheduledValues(now);
+      if (immediate) {
+        this.musicFilter.frequency.setValueAtTime(cutoffs[next], now);
+        this.musicEnergy.gain.setValueAtTime(energy[next], now);
+      } else {
+        this.musicFilter.frequency.setTargetAtTime(cutoffs[next], now, .22);
+        this.musicEnergy.gain.setTargetAtTime(energy[next], now, .18);
+      }
+    }
+    scoreNode(node = {}) {
+      const text = token(node.text || node.prompt || '');
+      const bg = String(node.bg || currentBg || '');
+      let mode = /alert|city_signal/.test(bg) ? 'tension'
+        : /signal|relay|seven_channels|missing|five_deleted|sea/.test(bg) ? 'zero'
+          : /cg_|morning|day|lounge/.test(bg) ? 'warm' : 'calm';
+      if (node.audioIntensity) mode = node.audioIntensity;
+      else if (node.speaker === '零号' || node.speaker === '陌生男声') mode = 'zero';
+      else if (node.speaker === '音效' || ['impact', 'gate', 'feedback', 'powerDown', 'monitor', 'fire', 'glass'].includes(node.sfx)
+        || /警报|倒计时|坍塌|爆炸|冲击|删除|死亡|燃烧|红区|断开|失控|水位/.test(text)) mode = 'crisis';
+      else if (!/alert|signal|relay|missing|sea/.test(bg) && /早餐|热汤|笑|牵住|拥抱|靠在|陪你|留下来|愿意|温度|心跳/.test(text)) mode = 'warm';
+      this.setIntensity(mode);
+    }
+    duck(duration = .82, depth = .08) {
+      if (!this.ctx || !this.musicDuck || !this.ambienceDuck) return;
+      clearTimeout(this.duckTimer);
+      const now = this.ctx.currentTime;
+      [this.musicDuck.gain, this.ambienceDuck.gain].forEach(param => {
+        param.cancelScheduledValues(now);
+        param.setTargetAtTime(Math.max(.0001, depth), now, .025);
       });
+      this.duckTimer = setTimeout(() => {
+        if (!this.ctx) return;
+        const resumeAt = this.ctx.currentTime;
+        [this.musicDuck.gain, this.ambienceDuck.gain].forEach(param => {
+          param.cancelScheduledValues(resumeAt);
+          param.setTargetAtTime(1, resumeAt, .16);
+        });
+      }, Math.max(80, duration * 1000));
+    }
+    silence(duration = 1.45) {
+      if (!this.ctx) return;
+      clearTimeout(this.duckTimer); clearTimeout(this.silenceAudioTimer);
+      const now = this.ctx.currentTime;
+      [this.musicDuck.gain, this.ambienceDuck.gain, this.sfxDuck.gain].forEach(param => {
+        param.cancelScheduledValues(now);
+        param.setTargetAtTime(.0001, now, .018);
+      });
+      this.silenceAudioTimer = setTimeout(() => {
+        if (!this.ctx) return;
+        const resumeAt = this.ctx.currentTime;
+        [this.musicDuck.gain, this.ambienceDuck.gain, this.sfxDuck.gain].forEach(param => {
+          param.cancelScheduledValues(resumeAt);
+          param.setTargetAtTime(1, resumeAt, .1);
+        });
+      }, Math.max(80, duration * 1000 - 45));
+    }
+    ending(failure = false, index = 0) {
+      this.setIntensity(failure ? 'loss' : 'ending');
+      this.duck(.34, .12);
+      if (failure) {
+        [220, 164.81, 110].forEach((note, index) => this.tone(note, .48, .035, index === 2 ? 'triangle' : 'sine', { delay: .11 + index * .13, pan: (1 - index) * .2 }));
+        return;
+      }
+      const root = 174.61 + (index % 5) * 11;
+      [root, root * 1.25, root * 1.5].forEach((note, i) => this.tone(note, .85, .043 - i * .006, 'sine', { delay: .09 + i * .11, pan: (i - 1) * .24 }));
+    }
+    preview(bus) {
+      this.ensure(); this.applyVolume();
+      if (bus === 'music') {
+        this.musicTone(220, .72, .04, 'sine', { pan: -.18 });
+        this.musicTone(277.18, .82, .03, 'triangle', { delay: .08, pan: .2 });
+      } else this.choice();
+    }
+    pause() {
+      clearTimeout(this.musicTimer); this.musicTimer = null;
+      this.ctx?.suspend?.();
+    }
+    resume() {
+      if (!this.ctx) return;
+      Promise.resolve(this.ctx.resume?.()).then(() => {
+        if (!this.musicTimer) this.scheduleMusic(260);
+      }).catch(() => {});
     }
   }
   const audio = new AudioEngine();
@@ -258,6 +725,12 @@
       dom.newGame.focus();
       setTimeout(playZeroTitleUnlock, 180);
     }, persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 50 : 780));
+  }
+
+  function unlockFromBoot() {
+    audio.ensure();
+    audio.bootLock();
+    finishBoot();
   }
 
   function playBoot() {
@@ -324,6 +797,7 @@
     const text = token(node.text || '');
     const zero = node.speaker === '零号' || node.speaker === '陌生男声';
     const impact = node.speaker === '音效' || /啸叫|冲击|敲门|爆出尖锐|线路随即断开/.test(text);
+    if (node.sfx) audio.playCue(node.sfx);
     if (zero) {
       showSignalEvent('CH 00', 'UNREGISTERED VOICE', true);
       if (Date.now() - lastSignalCueAt < 900) return;
@@ -336,6 +810,7 @@
       setTimeout(() => dom.game.classList.remove('signal-corrupt'), 620);
     } else if (impact) {
       showSignalEvent('SIGNAL', 'LEVEL EXCEEDED', true);
+      if (node.sfx) return;
       if (Date.now() - lastSignalCueAt < 700) return;
       lastSignalCueAt = Date.now();
       audio.noise(.5, .03, 0);
@@ -360,7 +835,7 @@
     clearTimeout(silenceTimer);
     clearInterval(typingTimer); clearTimeout(autoTimer);
     dom.game.classList.add('silence');
-    audio.duck(Math.max(.7, (node.duration || 1450) / 1000));
+    audio.silence(Math.max(.7, (node.duration || 1450) / 1000));
     const duration = persistent.settings.reducedMotion ? 80 : Math.max(450, Number(node.duration) || 1450);
     silenceTimer = setTimeout(() => {
       dom.game.classList.remove('silence');
@@ -486,6 +961,7 @@
     }
     const sceneChanged = Boolean(node.bg && node.bg !== currentBg);
     if (node.bg) setBackground(node.bg, options.immediate);
+    audio.scoreNode(node);
 
     if (node.type === 'line') {
       if (Object.prototype.hasOwnProperty.call(node, 'char')) setPortrait(node.char, node.expression, sceneChanged);
@@ -498,6 +974,7 @@
       typeLine(node.text);
       autoSave();
     } else if (node.type === 'choice') {
+      audio.prompt();
       showChoices(node);
       autoSave();
     } else if (node.type === 'gate') {
@@ -535,7 +1012,10 @@
     if (!node || node.type !== 'line') return;
     audio.ensure();
     if (typing) { finishTyping(); return; }
-    if (node.next) showNode(node.next);
+    if (node.next) {
+      audio.tone(430, .045, .012, 'triangle', { pan: .08 });
+      showNode(node.next);
+    }
   }
 
   function requirementMet(requires) {
@@ -648,7 +1128,7 @@
     } else dom.endingEvidence.hidden = true;
     dom.endingTitleBtn.textContent = '返回标题';
     dom.endingRestartBtn.textContent = ending.failure ? '回溯到信号分歧' : '选择其他信号';
-    audio.evidence(ending.index || 0);
+    audio.ending(Boolean(ending.failure), ending.index || 0);
     setTimeout(() => toast(isNew && ending.evidence ? `已回收证物 · ${ending.evidence.code}` : isNew ? '新结局已记录至终夜档案' : '已读取结局记录'), 700);
   }
 
@@ -1031,7 +1511,9 @@
       list.append(
         settingRow('文字速度', 5, 60, persistent.settings.textSpeed, v => v <= 12 ? '很快' : v <= 28 ? '标准' : '慢', v => persistent.settings.textSpeed = v),
         settingRow('自动等待', 700, 3600, persistent.settings.autoDelay, v => `${(v / 1000).toFixed(1)}s`, v => persistent.settings.autoDelay = v),
-        settingRow('音量', 0, 100, persistent.settings.volume, v => `${v}%`, v => { persistent.settings.volume = v; audio.applyVolume(); }),
+        settingRow('总音量', 0, 100, persistent.settings.volume, v => `${v}%`, v => { persistent.settings.volume = v; audio.applyVolume(); }),
+        settingRow('背景音乐', 0, 100, persistent.settings.musicVolume, v => `${v}%`, v => { persistent.settings.musicVolume = v; audio.applyVolume(); audio.preview('music'); }),
+        settingRow('剧情音效', 0, 100, persistent.settings.sfxVolume, v => `${v}%`, v => { persistent.settings.sfxVolume = v; audio.applyVolume(); audio.preview('sfx'); }),
         toggleRow('静音', persistent.settings.muted, v => { persistent.settings.muted = v; audio.applyVolume(); }),
         toggleRow('减少动态效果', persistent.settings.reducedMotion, v => { persistent.settings.reducedMotion = v; applySettings(); })
       );
@@ -1066,7 +1548,7 @@
       signal.innerHTML = '<div><span>FM · NIGHT RECEIVER</span><b>00:13</b><small>CHANNEL 06 EXISTS</small></div>';
       const copy = document.createElement('div');
       copy.className = 'about-copy';
-      copy.innerHTML = `<small>${RELEASE} · SIGNAL AFTERIMAGE</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>4–6h</b><span>完整探索 · 依阅读速度</span></div></div>`;
+      copy.innerHTML = `<small>${RELEASE} · NIGHT MIX</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>6-LAYER</b><span>动态夜间声场</span></div></div>`;
       const links = document.createElement('div');
       links.className = 'about-links';
       const repo = document.createElement('a'); repo.href = 'https://github.com/KevinKaslana093/after-zero'; repo.target = '_blank'; repo.rel = 'noopener'; repo.textContent = 'GitHub · 源码与版本';
@@ -1241,7 +1723,7 @@
   }
 
   function bindEvents() {
-    dom.bootSkip.onclick = finishBoot;
+    dom.bootSkip.onclick = unlockFromBoot;
     dom.newGame.onclick = () => { audio.ensure(); dom.nameModal.classList.remove('hidden'); setTimeout(() => dom.playerName.select(), 50); };
     dom.confirmName.onclick = () => {
       const name = dom.playerName.value.trim().slice(0, 8) || DEFAULT_PLAYER_NAME;
@@ -1302,7 +1784,7 @@
     };
     document.addEventListener('keydown', e => {
       if (dom.boot && getComputedStyle(dom.boot).visibility !== 'hidden') {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.code === 'Space') finishBoot();
+        if (e.key === 'Escape' || e.key === 'Enter' || e.code === 'Space') unlockFromBoot();
         e.preventDefault(); return;
       }
       if (state && STORY.nodes[state.nodeId]?.type === 'silence') {
@@ -1324,8 +1806,8 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         clearTimeout(autoTimer);
-        audio.ctx?.suspend?.();
-      } else if (audio.ctx && !persistent.settings.muted) audio.ctx.resume?.();
+        audio.pause();
+      } else if (audio.ctx && !persistent.settings.muted) audio.resume();
     });
   }
 

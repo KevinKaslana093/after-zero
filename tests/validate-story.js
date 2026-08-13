@@ -34,6 +34,10 @@ const silenceNodes = Object.values(story.nodes).filter(node => node.type === 'si
 if (silenceNodes.length !== 5) errors.push(`expected 5 route silence beats, found ${silenceNodes.length}`);
 const afterimageChoices = Object.values(story.nodes).flatMap(node => node.choices || []).filter(choice => choice.afterimage);
 if (afterimageChoices.length < 15) errors.push(`expected at least 15 choice afterimages, found ${afterimageChoices.length}`);
+const supportedSfx = new Set(['feedback', 'cut', 'disconnect', 'shutter', 'delete', 'phone', 'vent', 'tape', 'clock', 'heartbeat', 'impact', 'lock', 'powerDown', 'powerUp', 'water', 'gate', 'monitor', 'flatline', 'fire', 'glass', 'mute', 'thunder', 'signal', 'success', 'failure']);
+const sfxNodes = Object.entries(story.nodes).filter(([, node]) => node.sfx);
+if (sfxNodes.length < 45) errors.push(`expected at least 45 authored sound cues, found ${sfxNodes.length}`);
+for (const [id, node] of sfxNodes) if (!supportedSfx.has(node.sfx)) errors.push(`${id} has unsupported sound cue ${node.sfx}`);
 
 for (const [key, bg] of Object.entries(story.backgrounds)) {
   if (!bg.src) errors.push(`background ${key} has no src`);
@@ -65,4 +69,4 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`Story graph valid: ${Object.keys(story.nodes).length} nodes, ${Object.keys(story.endings).length} endings, ${referencedAssets.size} assets.`);
+console.log(`Story graph valid: ${Object.keys(story.nodes).length} nodes, ${Object.keys(story.endings).length} endings, ${sfxNodes.length} authored sound cues, ${referencedAssets.size} assets.`);
