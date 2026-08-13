@@ -17,6 +17,7 @@ const assertNode = (source, target, field) => {
 
 for (const [id, node] of Object.entries(story.nodes)) {
   if (!node || !node.type) errors.push(`${id} has no type`);
+  if (!['line', 'choice', 'gate', 'routeGate', 'ending', 'silence'].includes(node.type)) errors.push(`${id} has unsupported type ${node.type}`);
   if (node.bg && !story.backgrounds[node.bg]) errors.push(`${id}.bg -> missing background ${node.bg}`);
   if (node.char != null && !story.characters[node.char]) errors.push(`${id}.char -> missing character ${node.char}`);
   assertNode(id, node.next, 'next');
@@ -26,7 +27,13 @@ for (const [id, node] of Object.entries(story.nodes)) {
   for (const route of Object.values(node.routes || {})) assertNode(id, route.next, 'route.next');
   if (node.trueRoute) assertNode(id, node.trueRoute.next, 'trueRoute.next');
   if (node.type === 'ending' && !story.endings[node.ending]) errors.push(`${id} -> missing ending ${node.ending}`);
+  if (node.type === 'silence' && (!node.next || !Number.isFinite(node.duration))) errors.push(`${id} has invalid silence transition`);
 }
+
+const silenceNodes = Object.values(story.nodes).filter(node => node.type === 'silence');
+if (silenceNodes.length !== 5) errors.push(`expected 5 route silence beats, found ${silenceNodes.length}`);
+const afterimageChoices = Object.values(story.nodes).flatMap(node => node.choices || []).filter(choice => choice.afterimage);
+if (afterimageChoices.length < 15) errors.push(`expected at least 15 choice afterimages, found ${afterimageChoices.length}`);
 
 for (const [key, bg] of Object.entries(story.backgrounds)) {
   if (!bg.src) errors.push(`background ${key} has no src`);

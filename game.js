@@ -5,6 +5,8 @@
   const STORAGE_KEY = 'after-zero-save-v1';
   const HERO_NAME = '江临';
   const DEFAULT_PLAYER_NAME = '未署名听众';
+  const RELEASE = 'V4.3';
+  const SITE_URL = 'https://kevinkaslana093.github.io/after-zero/';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -12,14 +14,17 @@
 
   const dom = {
     screens: $$('.screen'),
+    boot: $('#boot-screen'), bootStatus: $('#boot-status'), bootTime: $('#boot-time'), bootProgressBar: $('#boot-progress-bar'),
+    bootProgressValue: $('#boot-progress-value'), bootKicker: $('#boot-kicker'), bootSkip: $('#boot-skip'),
     title: $('#title-screen'), game: $('#game-screen'), ending: $('#ending-screen'),
-    newGame: $('#new-game-btn'), continue: $('#continue-btn'), collection: $('#collection-btn'), titleSettings: $('#title-settings-btn'),
+    newGame: $('#new-game-btn'), continue: $('#continue-btn'), collection: $('#collection-btn'), titleSettings: $('#title-settings-btn'), about: $('#about-btn'),
     zeroRoute: $('#zero-route-btn'), zeroError: $('#zero-error'), zeroErrorConfirm: $('#zero-error-confirm'),
     endingPips: $('#ending-pips'), endingCount: $('#ending-count'),
     bgA: $('#bg-a'), bgB: $('#bg-b'), chapterNo: $('#chapter-number'), chapterTitle: $('#chapter-title'),
     portraitWrap: $('#portrait-wrap'), portrait: $('#portrait'), portraitGlow: $('#portrait-glow'), routeTag: $('#route-tag'),
     locationCard: $('#location-card'), locationName: $('#location-name'),
     signalEvent: $('#signal-event'), signalEventChannel: $('#signal-event-channel'), signalEventLabel: $('#signal-event-label'),
+    choiceAfterimage: $('#choice-afterimage'), choiceAfterimageText: $('#choice-afterimage span'),
     dialogueBox: $('#dialogue-box'), speakerEn: $('#speaker-en'), speakerName: $('#speaker-name'), dialogueText: $('#dialogue-text'), advance: $('#advance-indicator'),
     choiceLayer: $('#choice-layer'), choicePrompt: $('#choice-prompt'), choices: $('#choices'),
     modal: $('#modal'), modalKicker: $('#modal-kicker'), modalTitle: $('#modal-title'), modalBody: $('#modal-body'),
@@ -28,7 +33,7 @@
     endingEvidence: $('#ending-evidence'), endingEvidenceTitle: $('#ending-evidence-title'), endingEvidenceMeta: $('#ending-evidence-meta'),
     decoderModal: $('#decoder-modal'), decoderBody: $('#decoder-body'), decoderStage: $('#decoder-stage'),
     decoderIntegrityBar: $('#decoder-integrity-bar'), decoderIntegrityValue: $('#decoder-integrity-value'), decoderAbort: $('#decoder-abort'),
-    endingTitleBtn: $('#ending-title-btn'), endingRestartBtn: $('#ending-restart-btn'), toast: $('#toast')
+    endingTitleBtn: $('#ending-title-btn'), endingRestartBtn: $('#ending-restart-btn'), endingShareBtn: $('#ending-share-btn'), toast: $('#toast')
   };
 
   const defaults = {
@@ -76,6 +81,9 @@
   let signalEventTimer = null;
   let lastSignalCueAt = 0;
   let decoderSession = null;
+  let bootTimers = [];
+  let bootComplete = false;
+  let silenceTimer = null;
 
   function savePersistent() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent)); } catch (_) {}
@@ -225,6 +233,57 @@
     return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
   }
 
+  function clearBootTimers() {
+    bootTimers.forEach(timer => clearTimeout(timer));
+    bootTimers = [];
+  }
+
+  function finishBoot() {
+    if (bootComplete) {
+      clearBootTimers();
+      dom.boot.classList.add('complete');
+      dom.newGame.focus();
+      setTimeout(playZeroTitleUnlock, 180);
+      return;
+    }
+    bootComplete = true;
+    clearBootTimers();
+    dom.bootProgressBar.style.width = '100%';
+    dom.bootProgressValue.textContent = '100%';
+    dom.bootStatus.textContent = 'SIGNAL LOCKED';
+    dom.bootTime.textContent = '00:13';
+    dom.boot.classList.add('locked');
+    bootTimers.push(setTimeout(() => {
+      dom.boot.classList.add('complete');
+      dom.newGame.focus();
+      setTimeout(playZeroTitleUnlock, 180);
+    }, persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 50 : 780));
+  }
+
+  function playBoot() {
+    if (!dom.boot || bootComplete) return;
+    const reduced = persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) { finishBoot(); return; }
+    const steps = [
+      [160, 8, 'SCANNING 87.5 — 108.0 MHz', '--:--'],
+      [620, 24, 'NO CARRIER · RETRYING', '00:--'],
+      [1180, 43, 'UNREGISTERED BAND DETECTED', '00:1-'],
+      [1760, 67, 'SYNCHRONIZING PHASE', '00:13'],
+      [2350, 86, 'VOICEPRINT OUTSIDE SYSTEM', '00:13'],
+      [2860, 100, 'SIGNAL LOCKED', '00:13']
+    ];
+    steps.forEach(([delay, progress, status, time], index) => {
+      bootTimers.push(setTimeout(() => {
+        dom.bootProgressBar.style.width = `${progress}%`;
+        dom.bootProgressValue.textContent = `${String(progress).padStart(3, '0')}%`;
+        dom.bootStatus.textContent = status;
+        dom.bootTime.textContent = time;
+        if (index === 3) dom.boot.classList.add('locked');
+        if (index === steps.length - 1) finishBoot();
+      }, delay));
+    });
+  }
+
   function setBackground(key, immediate = false) {
     if (!key || (currentBg === key && !immediate)) return;
     const info = STORY.backgrounds[key];
@@ -281,6 +340,32 @@
       lastSignalCueAt = Date.now();
       audio.noise(.5, .03, 0);
     }
+  }
+
+  function showChoiceAfterimage(text) {
+    if (!text || !dom.choiceAfterimage) return;
+    dom.choiceAfterimageText.textContent = token(text);
+    dom.choiceAfterimage.hidden = false;
+    dom.game.classList.add('afterimage');
+  }
+
+  function clearChoiceAfterimage() {
+    if (!dom.choiceAfterimage) return;
+    dom.choiceAfterimage.hidden = true;
+    dom.choiceAfterimageText.textContent = '';
+    dom.game.classList.remove('afterimage');
+  }
+
+  function playSilence(node) {
+    clearTimeout(silenceTimer);
+    clearInterval(typingTimer); clearTimeout(autoTimer);
+    dom.game.classList.add('silence');
+    audio.duck(Math.max(.7, (node.duration || 1450) / 1000));
+    const duration = persistent.settings.reducedMotion ? 80 : Math.max(450, Number(node.duration) || 1450);
+    silenceTimer = setTimeout(() => {
+      dom.game.classList.remove('silence');
+      showNode(node.next);
+    }, duration);
   }
 
   function setPortrait(key, expression, resetExpression = false) {
@@ -386,6 +471,13 @@
     const node = STORY.nodes[id];
     if (!node) { toast(`找不到剧情节点：${id}`); return; }
     state.nodeId = id;
+    if (node.type !== 'gate' && node.type !== 'routeGate') {
+      const afterimage = node.afterimage || state.flags.choiceAfterimage;
+      if (afterimage) {
+        showChoiceAfterimage(afterimage);
+        delete state.flags.choiceAfterimage;
+      } else clearChoiceAfterimage();
+    }
     dom.choiceLayer.classList.add('hidden');
     dom.dialogueBox.style.visibility = '';
     if (node.chapter) {
@@ -430,6 +522,8 @@
       applyEffect(route.effect);
       setTimeout(() => toast(`SIGNAL LOCK · ${STORY.characters[selected].name}`), 180);
       showNode(route.next, options);
+    } else if (node.type === 'silence') {
+      playSilence(node);
     } else if (node.type === 'ending') {
       receiveEnding(node.ending);
     }
@@ -509,6 +603,7 @@
       && STORY.nodes[state.nodeId].choices.every(item => !choiceUnlocked(item)))) return;
     audio.choice();
     applyEffect(choice.effect);
+    if (choice.afterimage) state.flags.choiceAfterimage = choice.afterimage;
     dom.choiceLayer.classList.add('hidden');
     dom.dialogueBox.style.visibility = '';
     state.history.push({ speaker: '选择', text: choice.label, nodeId: `${state.nodeId}:choice` });
@@ -794,8 +889,11 @@
 
   function startGame(gameState) {
     audio.ensure();
+    clearTimeout(silenceTimer);
+    dom.game.classList.remove('silence');
     state = clone(gameState);
     state.hero = HERO_NAME;
+    state.flags = state.flags && typeof state.flags === 'object' ? state.flags : {};
     // V2 true-route saves used the old reveal structure. Resume them at the
     // beginning of the rebuilt finale so no player is stranded in legacy nodes.
     if (String(state.nodeId || '').startsWith('v2_true_')) state.nodeId = 'v3_true_awaken_01';
@@ -808,7 +906,8 @@
   }
 
   function returnTitle() {
-    clearInterval(typingTimer); clearTimeout(autoTimer);
+    clearInterval(typingTimer); clearTimeout(autoTimer); clearTimeout(silenceTimer);
+    dom.game.classList.remove('silence');
     setAuto(false); setSkip(false);
     closeModal();
     updateTitleProgress();
@@ -936,7 +1035,110 @@
         toggleRow('静音', persistent.settings.muted, v => { persistent.settings.muted = v; audio.applyVolume(); }),
         toggleRow('减少动态效果', persistent.settings.reducedMotion, v => { persistent.settings.reducedMotion = v; applySettings(); })
       );
+      const reset = document.createElement('button');
+      reset.className = 'danger-reset';
+      reset.textContent = '重置全部进度';
+      let armed = false;
+      let disarmTimer = null;
+      reset.onclick = () => {
+        if (!armed) {
+          armed = true;
+          reset.classList.add('armed');
+          reset.textContent = '再次点击，永久清除当前浏览器存档';
+          disarmTimer = setTimeout(() => { armed = false; reset.classList.remove('armed'); reset.textContent = '重置全部进度'; }, 4500);
+          return;
+        }
+        clearTimeout(disarmTimer);
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+      };
+      list.appendChild(reset);
       body.appendChild(list);
+    });
+  }
+
+  function openAbout() {
+    openModal('ABOUT THE BROADCAST', '作品信息', body => {
+      const sheet = document.createElement('section');
+      sheet.className = 'about-sheet';
+      const signal = document.createElement('div');
+      signal.className = 'about-signal';
+      signal.innerHTML = '<div><span>FM · NIGHT RECEIVER</span><b>00:13</b><small>CHANNEL 06 EXISTS</small></div>';
+      const copy = document.createElement('div');
+      copy.className = 'about-copy';
+      copy.innerHTML = `<small>${RELEASE} · SIGNAL AFTERIMAGE</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>4–6h</b><span>完整探索 · 依阅读速度</span></div></div>`;
+      const links = document.createElement('div');
+      links.className = 'about-links';
+      const repo = document.createElement('a'); repo.href = 'https://github.com/KevinKaslana093/after-zero'; repo.target = '_blank'; repo.rel = 'noopener'; repo.textContent = 'GitHub · 源码与版本';
+      const feedback = document.createElement('a'); feedback.href = 'https://github.com/KevinKaslana093/after-zero/issues'; feedback.target = '_blank'; feedback.rel = 'noopener'; feedback.textContent = '提交反馈';
+      const replay = document.createElement('a'); replay.href = '#'; replay.textContent = '重播开屏动画';
+      replay.onclick = event => { event.preventDefault(); closeModal(); replayBoot(); };
+      links.append(repo, feedback, replay); copy.appendChild(links); sheet.append(signal, copy); body.appendChild(sheet);
+    });
+  }
+
+  function replayBoot() {
+    clearBootTimers();
+    bootComplete = false;
+    dom.boot.classList.remove('complete', 'locked');
+    dom.bootStatus.textContent = 'SEARCHING FOR SIGNAL';
+    dom.bootTime.textContent = '--:--';
+    dom.bootProgressBar.style.width = '0%';
+    dom.bootProgressValue.textContent = '000%';
+    playBoot();
+  }
+
+  function shareCardDataURL(endingKey) {
+    const ending = STORY.endings[endingKey];
+    if (!ending) return '';
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200; canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+    const char = STORY.characters[ending.char || endingKey] || STORY.characters.lincheng;
+    const accent = endingKey === 'true' ? '#e34b68' : `rgb(${char.rgb})`;
+    const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+    gradient.addColorStop(0, '#030711'); gradient.addColorStop(.58, '#091426'); gradient.addColorStop(1, '#02040b');
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 630);
+    ctx.strokeStyle = 'rgba(136,220,243,.07)'; ctx.lineWidth = 1;
+    for (let x = 0; x <= 1200; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 630); ctx.stroke(); }
+    for (let y = 0; y <= 630; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1200, y); ctx.stroke(); }
+    const accentGlow = endingKey === 'true' ? 'rgba(227,75,104,.18)' : `rgba(${char.rgb},.18)`;
+    const glow = ctx.createRadialGradient(850, 310, 20, 850, 310, 400);
+    glow.addColorStop(0, accentGlow); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, 1200, 630);
+    ctx.strokeStyle = accent; ctx.globalAlpha = .6; ctx.strokeRect(42, 42, 1116, 546); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#88dcf3'; ctx.font = '600 18px monospace'; ctx.fillText('FM 00:13 · SIGNAL RECEIVED', 82, 105);
+    ctx.fillStyle = 'rgba(236,245,249,.32)'; ctx.textAlign = 'right'; ctx.fillText(`${RELEASE} · AFTER ZERO`, 1118, 105); ctx.textAlign = 'left';
+    ctx.fillStyle = '#ecf5f9'; ctx.font = '600 66px "Microsoft YaHei",sans-serif'; ctx.fillText('零点之后', 82, 235);
+    ctx.fillStyle = accent; ctx.font = '300 24px monospace'; ctx.fillText('AFTER ZERO', 86, 280);
+    const signalLabel = endingKey === 'true' ? 'TRUE SIGNAL' : ending.failure ? 'LOST SIGNAL' : `SIGNAL ${String(ending.index).padStart(2, '0')} / 05`;
+    ctx.fillStyle = accent; ctx.font = '600 20px monospace'; ctx.fillText(signalLabel, 84, 385);
+    ctx.fillStyle = '#d9e2e6'; ctx.font = '500 31px "Microsoft YaHei",sans-serif'; ctx.fillText(ending.failure ? '有一段声音没有抵达明天' : endingKey === 'true' ? '第六频道确认了世界之外的回答' : '我接收了一段不会被覆盖的信号', 84, 435);
+    ctx.fillStyle = 'rgba(217,226,230,.56)'; ctx.font = '400 19px "Microsoft YaHei",sans-serif'; ctx.fillText('有些来电，来自尚未发生的明天。', 84, 485);
+    ctx.strokeStyle = accent; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let x = 760; x <= 1090; x += 10) {
+      const y = 355 + Math.sin(x * .09) * 22 * (1 - Math.abs(925 - x) / 200) + Math.sin(x * .031) * 10;
+      if (x === 760) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#88dcf3'; ctx.font = '500 17px monospace'; ctx.fillText('kevinkaslana093.github.io/after-zero/', 82, 552);
+    return canvas.toDataURL('image/png');
+  }
+
+  function openShareCard() {
+    if (!currentEndingKey) return;
+    const dataURL = shareCardDataURL(currentEndingKey);
+    openModal('SHARE WITHOUT SPOILERS', '结局信号卡', body => {
+      const wrap = document.createElement('section'); wrap.className = 'share-card-wrap';
+      const preview = document.createElement('img'); preview.className = 'share-card-preview'; preview.src = dataURL; preview.alt = '无剧透结局分享卡';
+      const copy = document.createElement('div'); copy.className = 'share-card-copy'; copy.innerHTML = '<h3>把这一段信号发给下一位听众</h3><p>卡片不会包含结局标题、关键台词或谜题答案，可以放心分享。</p>';
+      const actions = document.createElement('div'); actions.className = 'share-actions';
+      const download = document.createElement('button'); download.className = 'glass-button primary'; download.textContent = '保存图片';
+      download.onclick = () => { const a = document.createElement('a'); a.href = dataURL; a.download = `after-zero-${currentEndingKey}-signal.png`; a.click(); };
+      const copyLink = document.createElement('button'); copyLink.className = 'glass-button'; copyLink.textContent = '复制游戏链接';
+      copyLink.onclick = async () => { try { await navigator.clipboard.writeText(SITE_URL); toast('游戏链接已复制'); } catch (_) { toast('浏览器未允许复制，请从地址栏复制'); } };
+      actions.append(download, copyLink); copy.appendChild(actions); wrap.append(preview, copy); body.appendChild(wrap);
     });
   }
 
@@ -1039,6 +1241,7 @@
   }
 
   function bindEvents() {
+    dom.bootSkip.onclick = finishBoot;
     dom.newGame.onclick = () => { audio.ensure(); dom.nameModal.classList.remove('hidden'); setTimeout(() => dom.playerName.select(), 50); };
     dom.confirmName.onclick = () => {
       const name = dom.playerName.value.trim().slice(0, 8) || DEFAULT_PLAYER_NAME;
@@ -1048,6 +1251,7 @@
     dom.continue.onclick = () => persistent.autoSave && startGame(persistent.autoSave.state);
     dom.collection.onclick = openArchive;
     dom.titleSettings.onclick = openSettings;
+    dom.about.onclick = openAbout;
     dom.zeroRoute.onclick = enterZeroRoute;
     dom.decoderAbort.onclick = closeDecoder;
     dom.zeroErrorConfirm.onclick = () => {
@@ -1070,6 +1274,7 @@
     });
     $$('[data-close-modal]').forEach(el => el.onclick = closeModal);
     dom.endingTitleBtn.onclick = returnTitle;
+    dom.endingShareBtn.onclick = openShareCard;
     dom.endingRestartBtn.onclick = () => {
       if (STORY.endings[currentEndingKey]?.failure && persistent.autoSave?.state) {
         startGame(persistent.autoSave.state);
@@ -1096,6 +1301,13 @@
       startGame(next);
     };
     document.addEventListener('keydown', e => {
+      if (dom.boot && getComputedStyle(dom.boot).visibility !== 'hidden') {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.code === 'Space') finishBoot();
+        e.preventDefault(); return;
+      }
+      if (state && STORY.nodes[state.nodeId]?.type === 'silence') {
+        e.preventDefault(); return;
+      }
       if (e.key === 'Escape') {
         if (!dom.decoderModal.classList.contains('hidden')) { closeDecoder(); return; }
         if (!dom.modal.classList.contains('hidden')) closeModal();
@@ -1121,7 +1333,7 @@
     preload(); bindEvents(); applySettings(); updateTitleProgress();
     dom.bgA.style.backgroundImage = `url("${STORY.backgrounds.rooftop.src}")`;
     for (const [key, ending] of Object.entries(STORY.endings)) if (!STORY.characters[ending.char || key]) console.warn('Ending without character', key);
-    setTimeout(playZeroTitleUnlock, 900);
+    playBoot();
   }
 
   init();

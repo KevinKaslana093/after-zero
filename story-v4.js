@@ -1149,6 +1149,141 @@
     evidence: { code: 'A-06', channel: '回信', title: '世界之外的回答', meta: '接收者：江临 / 信号状态：仍在继续', clue: '零点之后不是结局。有人回答以后，明天才第一次成为可能。' }
   });
 
+  // V4.3：关键选择不再立刻汇回同一句文本。每次回答都会留下短暂的
+  // “选择后像”；林澄与唐砂两条相对偏短的路线获得更完整的专属反应。
+  const wireChoiceAftermath = (choiceId, prefix, commonNext, branches) => {
+    const choiceNode = nodes[choiceId];
+    if (!choiceNode || choiceNode.type !== 'choice') return;
+    branches.forEach((branch, index) => {
+      const chainPrefix = `${prefix}_${index + 1}`;
+      addChain(chainPrefix, choiceNode.chapter, choiceNode.bg, branch.lines, commonNext);
+      branch.lines.forEach((_, lineIndex) => {
+        nodes[`${chainPrefix}_${String(lineIndex + 1).padStart(2, '0')}`].afterimage = branch.afterimage;
+      });
+      choiceNode.choices[index].next = `${chainPrefix}_01`;
+      choiceNode.choices[index].afterimage = branch.afterimage;
+    });
+  };
+
+  wireChoiceAftermath('v4_lc_choice1', 'v43_lincheng_answer', 'v4_lc_after1_01', [
+    {
+      afterimage: '你替她减轻了罪责，也替那段尚未说完的证词按下了停止。',
+      lines: [
+        ['林澄', '“所有人都这么安慰我。只要救下的人更多，没被问过的那个人就该接受结果。”', 'lincheng'],
+        ['旁白', '她把排班表折回原样。那句体谅没有让她轻松，只让哥哥再一次变成统计表上的合理损失。', 'lincheng'],
+        ['我', '“我不是想让你闭嘴。”', 'lincheng'],
+        ['林澄', '“我知道。可有些安慰之所以温柔，是因为它不要求我们继续听。”', 'lincheng']
+      ]
+    },
+    {
+      afterimage: '你用自己的假设靠近她，却也把另一个人的答案盖在了她身上。',
+      lines: [
+        ['林澄', '“你也会吗？”', 'lincheng'],
+        ['旁白', '她问得很轻。我却忽然听懂：如果我也习惯替别人决定，那么今晚站在门外的人仍然会是她。', 'lincheng'],
+        ['林澄', '“相似不等于理解。我们也许只是用同一种方式伤害重要的人。”', 'lincheng'],
+        ['我', '“那你把你的那一部分说完。我不替你写结论。”', 'lincheng']
+      ]
+    },
+    {
+      afterimage: '她第一次没有得到宽恕，却得到了把全部事实说完的许可。',
+      lines: [
+        ['旁白', '直播间安静了几秒。林澄没有辩解，也没有再说“都是为了救人”。', 'lincheng'],
+        ['林澄', '“好。那你可以怪我，也可以以后改变答案。”', 'lincheng'],
+        ['林澄', '“但请先听完。包括我当时害怕、犹豫，以及最后没有追出去的那一分钟。”', 'lincheng'],
+        ['旁白', '她按下播放。八年来第一次，那段录音没有在最容易原谅她的地方停止。', null]
+      ]
+    }
+  ]);
+
+  wireChoiceAftermath('v4_ts_choice1', 'v43_tangsha_answer', 'v4_ts_after1_01', [
+    {
+      afterimage: '你举起相机准备摔下时，她先抓住了你的手。',
+      lines: [
+        ['唐砂', '“别替我砸。它拍的是我，害怕的也是我。”', 'tangsha'],
+        ['旁白', '她的手心全是冷汗，却仍把相机从我掌中拿回去。毁掉预言看似反抗，也可能只是让恐惧替她完成选择。', 'tangsha'],
+        ['我', '“那你想怎么处理？”', 'tangsha'],
+        ['唐砂', '“先让我承认我想逃。承认以后，再决定相机该不该活。”', 'tangsha']
+      ]
+    },
+    {
+      afterimage: '你开始寻找预言允许的误差，她则开始怀疑每个动作是不是自己的。',
+      lines: [
+        ['旁白', '我按照片顺序标出路线。唐砂配合得异常认真，连迈哪只脚都先看一眼屏幕。', 'tangsha'],
+        ['唐砂', '“只要少错一步，结局就会没那么坏，对吧？”', 'tangsha'],
+        ['我', '“我们正在活成照片的校对员。”', 'tangsha'],
+        ['旁白', '她收起笑容。所谓修改细节，正一点点夺走她对“为什么行动”的回答。', 'tangsha']
+      ]
+    },
+    {
+      afterimage: '她关掉预览屏，先说出了一件照片从未要求她做的事。',
+      lines: [
+        ['唐砂', '“如果没看过？我会先去便利店买橙味冰棒，然后拍雨停后的第一束光。”', 'tangsha'],
+        ['我', '“那就从这件事开始。”', 'tangsha'],
+        ['旁白', '目录连续闪烁，却没有生成对应照片。一个微不足道的愿望，在预言的画框外留下了第一块空白。', 'tangsha'],
+        ['唐砂', '“原来不够伟大的理由，也能算我的理由。”', 'tangsha']
+      ]
+    }
+  ]);
+
+  wireChoiceAftermath('v4_sm_choice1', 'v43_sumi_answer', 'v4_sm_daily_01', [
+    { afterimage: '你拒绝了答案，却仍要求她在同一套数字里找到更好的答案。', lines: [
+      ['苏弥', '“收到。继续增加模拟次数。”', 'sumi'],
+      ['旁白', '她没有抬头。我的反对只让她把自己计算得更加彻底。', 'sumi']
+    ] },
+    { afterimage: '候选人从苏弥换成江临，系统的逻辑没有受到任何质疑。', lines: [
+      ['苏弥', '“变量替换完成。但你不比我更应该被消耗。”', 'sumi'],
+      ['旁白', '她第一次显出恼意，不是因为我否定方案，而是因为我学会了用同一种算法伤害自己。', 'sumi']
+    ] },
+    { afterimage: '推荐标记消失后，她第一次被允许回答一个没有评分标准的问题。', lines: [
+      ['苏弥', '“我想留下那段没用的哼唱。还有……明天早上的卤蛋。”', 'sumi'],
+      ['旁白', '她说得像在提交两项低优先级需求，却没有再把它们删除。', 'sumi']
+    ] }
+  ]);
+
+  wireChoiceAftermath('v4_gw_choice1', 'v43_guwanqing_answer', 'v4_gw_shift_01', [
+    { afterimage: '你为她准备了撑得更久的方法，却默认她仍然必须一直撑下去。', lines: [
+      ['顾晚晴', '“谢谢。这样我还能多值两个小时。”', 'guwanqing'],
+      ['旁白', '她熟练地收下药物，也熟练地把被照顾重新解释成继续工作的燃料。', 'guwanqing']
+    ] },
+    { afterimage: '你接过她的工作，却仍替她决定了什么时候可以停下。', lines: [
+      ['顾晚晴', '“江临，休息不是别人代替我以后发下来的许可。”', 'guwanqing'],
+      ['旁白', '她语气温和，拒绝却很清楚。照顾如果没有询问，也会变成另一种接管。', 'guwanqing']
+    ] },
+    { afterimage: '姓名写进病历的一刻，她终于从“可用资源”变成了需要被询问的人。', lines: [
+      ['顾晚晴', '“主诉：总觉得停下来就会被丢下。这个能治吗？”', 'guwanqing'],
+      ['我', '“先从允许别人陪你值这一班开始。”', 'guwanqing']
+    ] }
+  ]);
+
+  wireChoiceAftermath('v4_jy_choice1', 'v43_jiyao_answer', 'v4_jy_boxes_01', [
+    { afterimage: '你选择了眼前的她；这很温柔，却仍是一种替她盖章。', lines: [
+      ['纪遥', '“如果明天的我和现在不同，你还会说选错了吗？”', 'jiyao'],
+      ['旁白', '她没有否认这份喜欢，只把“现在”两个字认真圈了起来。', 'jiyao']
+    ] },
+    { afterimage: '证据最多的版本胜出，无法举证的人生被悄悄降成了注释。', lines: [
+      ['纪遥', '“原来活得真实，也需要准备足够完整的附件。”', 'jiyao'],
+      ['旁白', '她笑着记录答案，笔尖却在“伪造”两个字上停了很久。', 'jiyao']
+    ] },
+    { afterimage: '你只陈述自己记得的她，把最后的作者署名留给了本人。', lines: [
+      ['纪遥', '“那你负责作证，我负责以后推翻你的证词。”', 'jiyao'],
+      ['旁白', '她把日志的最终状态从“已确认”改成“仍在书写”。', 'jiyao']
+    ] }
+  ]);
+
+  // 在五条路线的最终抉择前撤掉雨声、音乐和对话框。静默本身是演出，
+  // 也是给玩家重新承担选择的时间，而不是额外的故障滤镜。
+  const insertSilence = (sourcePrefix, target, id, duration) => {
+    const source = Object.entries(nodes).find(([nodeId, node]) => nodeId.startsWith(sourcePrefix) && node.next === target);
+    if (!source) return;
+    source[1].next = id;
+    nodes[id] = { type: 'silence', chapter: nodes[target].chapter, bg: nodes[target].bg, duration, next: target };
+  };
+  insertSilence('v4_lc_precrisis_', 'v4_lc_choice4', 'v43_lincheng_dead_air', 1550);
+  insertSilence('v4_ts_tunnel_', 'v4_ts_choice4', 'v43_tangsha_dead_air', 1300);
+  insertSilence('v4_sm_core_', 'v4_sm_choice4', 'v43_sumi_dead_air', 1450);
+  insertSilence('v4_gw_crisis_', 'v4_gw_choice4', 'v43_guwanqing_dead_air', 1650);
+  insertSilence('v4_jy_core_', 'v4_jy_choice4', 'v43_jiyao_dead_air', 1450);
+
   story.preload = [
     backgrounds.v4_rooftop_sunset.src,
     backgrounds.v4_studio_day.src,

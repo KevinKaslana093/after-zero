@@ -31,6 +31,13 @@ async function solveDecoder(page, includeMistake = false) {
   await page.waitForSelector('.decoder-success');
 }
 
+async function waitForBoot(page) {
+  await page.waitForFunction(() => {
+    const boot = document.querySelector('#boot-screen');
+    return boot?.classList.contains('complete') && getComputedStyle(boot).visibility === 'hidden';
+  });
+}
+
 async function forceDecoderFailure(page) {
   await page.click('#zero-route-btn');
   await page.locator('.decoder-evidence').first().click();
@@ -43,7 +50,7 @@ async function forceDecoderFailure(page) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, channel: 'msedge' });
+  const browser = await chromium.launch({ headless: true, channel: 'msedge', args: ['--disable-gpu'] });
   const scenarios = [
     { name: 'desktop', viewport: { width: 1440, height: 900 } },
     { name: 'phone-portrait', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
@@ -55,6 +62,15 @@ async function forceDecoderFailure(page) {
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
     await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await waitForBoot(page);
+    await page.screenshot({ path: path.join(output, `after-zero-title-${scenario.name}.png`), fullPage: true });
+    const titleLayout = await page.evaluate(() => ({
+      menu: document.querySelector('.title-menu')?.getBoundingClientRect().toJSON(),
+      progress: document.querySelector('.title-progress')?.getBoundingClientRect().toJSON(),
+      width: innerWidth,
+      height: innerHeight
+    }));
+    if (!titleLayout.menu || titleLayout.menu.top < -1 || titleLayout.progress.bottom > titleLayout.height + 1) errors.push('title menu clipped');
     await page.click('#zero-route-btn');
     await page.waitForSelector('#decoder-modal:not(.hidden)');
     await page.screenshot({ path: path.join(output, `after-zero-${scenario.name}.png`), fullPage: true });
@@ -66,29 +82,36 @@ async function forceDecoderFailure(page) {
     if (layout.scrollWidth > layout.width + 1) errors.push(`horizontal overflow ${layout.scrollWidth} > ${layout.width}`);
     if (!layout.console || layout.console.width <= 0 || layout.console.height <= 0) errors.push('decoder console not visible');
     if (errors.length) throw new Error(`${scenario.name}: ${errors.join('; ')}`);
+    await page.close();
   }
 
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(page);
   await solveDecoder(page, true);
   await page.screenshot({ path: path.join(output, 'after-zero-decoder-success.png'), fullPage: true });
   await page.click('.decoder-success .decoder-submit');
   await page.waitForSelector('#game-screen.active');
   const trueRoute = await page.evaluate(() => ({ chapter: document.querySelector('#chapter-title').textContent, text: document.querySelector('#dialogue-text').textContent }));
   if (!trueRoute.text) throw new Error('true route did not render');
+  await page.close();
 
   const failurePage = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await failurePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
   await failurePage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(failurePage);
   await forceDecoderFailure(failurePage);
+  await failurePage.close();
 
   const archivePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await archivePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
   await archivePage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(archivePage);
   await archivePage.click('#collection-btn');
   await archivePage.click('.archive-decode-button');
   await archivePage.waitForSelector('#decoder-modal:not(.hidden)');
+  await archivePage.close();
 
   const cuePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const cueSave = JSON.parse(JSON.stringify(save));
@@ -98,10 +121,96 @@ async function forceDecoderFailure(page) {
   cueSave.zeroTitleSeen = false;
   await cuePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), cueSave);
   await cuePage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(cuePage);
   await cuePage.click('#continue-btn');
   await cuePage.waitForSelector('#signal-event.show');
   const cue = await cuePage.locator('#signal-event-label').textContent();
   if (cue !== 'UNREGISTERED VOICE') throw new Error(`unexpected zero cue: ${cue}`);
+  await cuePage.close();
+
+  const bootPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const bootSave = JSON.parse(JSON.stringify(save));
+  bootSave.settings.reducedMotion = false;
+  await bootPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), bootSave);
+  await bootPage.goto(url, { waitUntil: 'domcontentloaded' });
+  await bootPage.waitForSelector('#boot-screen:not(.complete)');
+  await bootPage.waitForFunction(() => Number(document.querySelector('#boot-progress-value')?.textContent.replace('%', '')) >= 24);
+  await bootPage.screenshot({ path: path.join(output, 'after-zero-boot.png'), fullPage: true });
+  await waitForBoot(bootPage);
+  const version = await bootPage.locator('.title-footer b').textContent();
+  if (!version.includes('V4.3')) throw new Error(`unexpected local version: ${version}`);
+  await bootPage.click('#about-btn');
+  await bootPage.waitForSelector('.about-sheet');
+  if (!(await bootPage.locator('.about-copy').textContent()).includes('1712')) throw new Error('about screen did not show current story size');
+  await bootPage.click('.close-button');
+  await bootPage.click('#title-settings-btn');
+  const reset = bootPage.locator('.danger-reset');
+  await reset.click();
+  if (!(await reset.textContent()).includes('再次点击')) throw new Error('progress reset did not require confirmation');
+  if (!(await bootPage.evaluate(() => Boolean(localStorage.getItem('after-zero-save-v1'))))) throw new Error('first reset click cleared save');
+  await bootPage.evaluate(() => {
+    const original = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = function (key) {
+      original.call(this, key);
+      if (key === 'after-zero-save-v1') sessionStorage.setItem('after-zero-reset-confirmed', '1');
+    };
+  });
+  await Promise.all([bootPage.waitForNavigation({ waitUntil: 'domcontentloaded' }), reset.click()]);
+  if (!(await bootPage.evaluate(() => sessionStorage.getItem('after-zero-reset-confirmed') === '1'))) throw new Error('confirmed reset did not clear save before reload');
+  await bootPage.close();
+
+  const aftermathPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const aftermathSave = JSON.parse(JSON.stringify(save));
+  aftermathSave.endings = [];
+  aftermathSave.echoes = [];
+  aftermathSave.autoSave.state.nodeId = 'v4_lc_choice1';
+  aftermathSave.autoSave.state.currentBg = 'v4_studio_dusk';
+  await aftermathPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), aftermathSave);
+  await aftermathPage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(aftermathPage);
+  await aftermathPage.click('#continue-btn');
+  await aftermathPage.locator('.choice-button').first().click();
+  await aftermathPage.waitForSelector('#choice-afterimage:not([hidden])');
+  const aftermathText = await aftermathPage.locator('#choice-afterimage').textContent();
+  if (!aftermathText.includes('停止')) throw new Error(`unexpected choice aftermath: ${aftermathText}`);
+  await aftermathPage.screenshot({ path: path.join(output, 'after-zero-choice-afterimage.png'), fullPage: true });
+  await aftermathPage.close();
+
+  const silencePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const silenceSave = JSON.parse(JSON.stringify(save));
+  silenceSave.settings.reducedMotion = false;
+  silenceSave.endings = [];
+  silenceSave.autoSave.state.nodeId = 'v43_lincheng_dead_air';
+  silenceSave.autoSave.state.currentBg = 'v4_studio_alert';
+  await silencePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), silenceSave);
+  await silencePage.goto(url, { waitUntil: 'domcontentloaded' });
+  await silencePage.click('#boot-skip');
+  await waitForBoot(silencePage);
+  await silencePage.click('#continue-btn');
+  await silencePage.waitForSelector('#game-screen.silence');
+  await silencePage.waitForTimeout(700);
+  await silencePage.screenshot({ path: path.join(output, 'after-zero-silence.png'), fullPage: true });
+  await silencePage.keyboard.press('Escape');
+  if (!(await silencePage.locator('#modal').evaluate(element => element.classList.contains('hidden')))) throw new Error('silence beat was interrupted by menu');
+  await silencePage.waitForSelector('#choice-layer:not(.hidden)', { timeout: 4000 });
+  await silencePage.close();
+
+  const sharePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const shareSave = JSON.parse(JSON.stringify(save));
+  shareSave.endings = [];
+  shareSave.autoSave.state.nodeId = 'ending_lincheng';
+  shareSave.autoSave.state.currentBg = 'cg_lincheng';
+  await sharePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), shareSave);
+  await sharePage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(sharePage);
+  await sharePage.click('#continue-btn');
+  await sharePage.waitForSelector('#ending-screen.active');
+  await sharePage.click('#ending-share-btn');
+  await sharePage.waitForSelector('.share-card-preview');
+  const card = await sharePage.locator('.share-card-preview').evaluate(image => ({ src: image.src, width: image.naturalWidth, height: image.naturalHeight }));
+  if (!card.src.startsWith('data:image/png') || card.width !== 1200 || card.height !== 630) throw new Error(`invalid share card: ${JSON.stringify(card)}`);
+  await sharePage.screenshot({ path: path.join(output, 'after-zero-share-card.png'), fullPage: true });
+  await sharePage.close();
   await browser.close();
-  console.log(`Browser smoke valid: ${scenarios.length} responsive decoder views, full puzzle flow, TRUE SIGNAL entry, and zero-channel cue.`);
+  console.log(`Browser smoke valid: boot, ${scenarios.length} responsive decoder views, aftermath, silence, share card, full puzzle flow, TRUE SIGNAL entry, and zero-channel cue.`);
 })().catch(error => { console.error(error); process.exit(1); });

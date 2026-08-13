@@ -17,9 +17,13 @@ const save = {
   page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
   await page.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), save);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForFunction(() => {
+    const boot = document.querySelector('#boot-screen');
+    return boot?.classList.contains('complete') && getComputedStyle(boot).visibility === 'hidden';
+  }, null, { timeout: 30000 });
   await page.waitForSelector('.title-content', { timeout: 30000 });
   const version = await page.locator('.title-footer b').textContent();
-  if (!version.includes('V4.2')) errors.push(`wrong live version: ${version}`);
+  if (!version.includes('V4.3')) errors.push(`wrong live version: ${version}`);
   await page.click('#collection-btn');
   await page.waitForSelector('.evidence-decoder.complete');
   await page.locator('.archive-card:not(.locked)').first().click();
