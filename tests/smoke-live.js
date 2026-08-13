@@ -43,22 +43,26 @@ const save = {
   await page.waitForSelector('.decoder-success');
   await page.click('.decoder-success .decoder-submit');
   await page.waitForSelector('#game-screen.active');
-  await page.evaluate(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), {
+  const audioSave = {
     ...save,
     settings: { ...save.settings, volume: 42, musicVolume: 84, sfxVolume: 88, muted: false },
     endings: [], zeroTitleSeen: false,
     autoSave: { ...save.autoSave, state: { ...save.autoSave.state, nodeId: 'v4_d1_supper_10', currentBg: 'v4_convenience' } }
-  });
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.click('#boot-skip');
-  await page.waitForFunction(() => {
+  };
+  const audioPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  audioPage.on('pageerror', error => errors.push(error.message));
+  audioPage.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+  await audioPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), audioSave);
+  await audioPage.goto(`${url}&audio=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await audioPage.waitForFunction(() => {
     const boot = document.querySelector('#boot-screen');
     return boot?.classList.contains('complete') && getComputedStyle(boot).visibility === 'hidden';
   });
-  await page.click('#continue-btn');
-  await page.waitForFunction(() => document.body.dataset.lastSfx === 'shutter');
-  const audioState = await page.evaluate(() => ({ state: document.body.dataset.audioState, scene: document.body.dataset.audioScene, cue: document.body.dataset.lastSfx }));
+  await audioPage.click('#continue-btn');
+  await audioPage.waitForFunction(() => document.body.dataset.lastSfx === 'shutter');
+  const audioState = await audioPage.evaluate(() => ({ state: document.body.dataset.audioState, scene: document.body.dataset.audioScene, cue: document.body.dataset.lastSfx }));
   if (audioState.state !== 'active' || audioState.scene !== 'street' || audioState.cue !== 'shutter') errors.push(`wrong live audio state: ${JSON.stringify(audioState)}`);
+  await audioPage.close();
   if (errors.length) throw new Error(errors.join('; '));
   await browser.close();
   console.log(`Live smoke valid: ${url}`);
