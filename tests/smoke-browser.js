@@ -125,8 +125,33 @@ async function forceDecoderFailure(page) {
   await cuePage.click('#continue-btn');
   await cuePage.waitForSelector('#signal-event.show');
   const cue = await cuePage.locator('#signal-event-label').textContent();
-  if (cue !== 'UNREGISTERED VOICE') throw new Error(`unexpected zero cue: ${cue}`);
+  if (cue !== 'SIGNAL DESYNC') throw new Error(`unexpected unstable zero cue: ${cue}`);
+  if (!(await cuePage.locator('#game-screen').evaluate(element => element.classList.contains('signal-corrupt')))) throw new Error('unstable zero line did not trigger corruption');
   await cuePage.close();
+
+  const stableZeroPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const stableZeroSave = JSON.parse(JSON.stringify(save));
+  stableZeroSave.settings.muted = false;
+  stableZeroSave.settings.volume = 42;
+  stableZeroSave.autoSave.state.nodeId = 'v4_d2_call_06';
+  stableZeroSave.autoSave.state.currentBg = 'v4_studio_signal';
+  stableZeroSave.endings = [];
+  stableZeroSave.zeroTitleSeen = false;
+  await stableZeroPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), stableZeroSave);
+  await stableZeroPage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(stableZeroPage);
+  await stableZeroPage.click('#continue-btn');
+  await stableZeroPage.waitForSelector('#signal-event.show');
+  const stableZeroState = await stableZeroPage.evaluate(() => ({
+    label: document.querySelector('#signal-event-label')?.textContent,
+    danger: document.querySelector('#signal-event')?.classList.contains('danger'),
+    corrupt: document.querySelector('#game-screen')?.classList.contains('signal-corrupt'),
+    intensity: document.body.dataset.audioIntensity
+  }));
+  if (stableZeroState.label !== 'ZERO RELAY ONLINE' || stableZeroState.danger || stableZeroState.corrupt || stableZeroState.intensity !== 'calm') {
+    throw new Error(`stable zero line was framed as hostile: ${JSON.stringify(stableZeroState)}`);
+  }
+  await stableZeroPage.close();
 
   const bootPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const bootSave = JSON.parse(JSON.stringify(save));
@@ -134,11 +159,16 @@ async function forceDecoderFailure(page) {
   await bootPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), bootSave);
   await bootPage.goto(url, { waitUntil: 'domcontentloaded' });
   await bootPage.waitForSelector('#boot-screen:not(.complete)');
+  await bootPage.click('#boot-skip');
+  await bootPage.waitForFunction(() => document.querySelector('#boot-screen')?.classList.contains('audio-connected'));
+  if ((await bootPage.locator('#boot-skip').textContent()).includes('点击接入声音')) throw new Error('boot audio did not acknowledge user gesture');
   await bootPage.waitForFunction(() => Number(document.querySelector('#boot-progress-value')?.textContent.replace('%', '')) >= 24);
   await bootPage.screenshot({ path: path.join(output, 'after-zero-boot.png'), fullPage: true });
+  await bootPage.waitForSelector('#boot-screen.exiting');
+  await bootPage.screenshot({ path: path.join(output, 'after-zero-boot-transition.png'), fullPage: true });
   await waitForBoot(bootPage);
   const version = await bootPage.locator('.title-footer b').textContent();
-  if (!version.includes('V4.4')) throw new Error(`unexpected local version: ${version}`);
+  if (!version.includes('V4.5')) throw new Error(`unexpected local version: ${version}`);
   await bootPage.click('#about-btn');
   await bootPage.waitForSelector('.about-sheet');
   if (!(await bootPage.locator('.about-copy').textContent()).includes('1712')) throw new Error('about screen did not show current story size');
@@ -240,5 +270,5 @@ async function forceDecoderFailure(page) {
   await sharePage.screenshot({ path: path.join(output, 'after-zero-share-card.png'), fullPage: true });
   await sharePage.close();
   await browser.close();
-  console.log(`Browser smoke valid: boot, ${scenarios.length} responsive decoder views, dynamic audio scene and cue, aftermath, silence, share card, full puzzle flow, TRUE SIGNAL entry, and zero-channel cue.`);
+  console.log(`Browser smoke valid: voiced boot transition, ${scenarios.length} responsive decoder views, stable/unstable zero semantics, dynamic audio scene and cue, aftermath, silence, share card, full puzzle flow, and TRUE SIGNAL entry.`);
 })().catch(error => { console.error(error); process.exit(1); });

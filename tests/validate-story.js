@@ -34,10 +34,15 @@ const silenceNodes = Object.values(story.nodes).filter(node => node.type === 'si
 if (silenceNodes.length !== 5) errors.push(`expected 5 route silence beats, found ${silenceNodes.length}`);
 const afterimageChoices = Object.values(story.nodes).flatMap(node => node.choices || []).filter(choice => choice.afterimage);
 if (afterimageChoices.length < 15) errors.push(`expected at least 15 choice afterimages, found ${afterimageChoices.length}`);
-const supportedSfx = new Set(['feedback', 'cut', 'disconnect', 'shutter', 'delete', 'phone', 'vent', 'tape', 'clock', 'heartbeat', 'impact', 'lock', 'powerDown', 'powerUp', 'water', 'gate', 'monitor', 'flatline', 'fire', 'glass', 'mute', 'thunder', 'signal', 'success', 'failure']);
+const supportedSfx = new Set(['feedback', 'cut', 'disconnect', 'shutter', 'delete', 'phone', 'vent', 'tape', 'clock', 'heartbeat', 'impact', 'lock', 'powerDown', 'powerUp', 'water', 'gate', 'monitor', 'flatline', 'fire', 'glass', 'mute', 'thunder', 'room', 'footsteps', 'cup', 'cameraTap', 'page', 'keyboard', 'door', 'radioChime', 'rainClose', 'breath', 'warmth', 'zeroLink', 'signal', 'success', 'failure']);
 const sfxNodes = Object.entries(story.nodes).filter(([, node]) => node.sfx);
-if (sfxNodes.length < 45) errors.push(`expected at least 45 authored sound cues, found ${sfxNodes.length}`);
+if (sfxNodes.length < 75) errors.push(`expected at least 75 authored sound cues, found ${sfxNodes.length}`);
 for (const [id, node] of sfxNodes) if (!supportedSfx.has(node.sfx)) errors.push(`${id} has unsupported sound cue ${node.sfx}`);
+const zeroLines = Object.entries(story.nodes).filter(([, node]) => node.type === 'line' && ['零号', '陌生男声'].includes(node.speaker));
+const unstableZeroLines = zeroLines.filter(([, node]) => node.signalState === 'unstable');
+const conflictZeroLines = zeroLines.filter(([, node]) => node.signalState === 'conflict');
+if (unstableZeroLines.length < 2 || unstableZeroLines.length > 6) errors.push(`expected selective zero instability cues, found ${unstableZeroLines.length}`);
+if (conflictZeroLines.length < 8) errors.push(`expected authored zero conflict states, found ${conflictZeroLines.length}`);
 
 for (const [key, bg] of Object.entries(story.backgrounds)) {
   if (!bg.src) errors.push(`background ${key} has no src`);

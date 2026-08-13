@@ -5,7 +5,7 @@
   const STORAGE_KEY = 'after-zero-save-v1';
   const HERO_NAME = '江临';
   const DEFAULT_PLAYER_NAME = '未署名听众';
-  const RELEASE = 'V4.4';
+  const RELEASE = 'V4.5';
   const SITE_URL = 'https://kevinkaslana093.github.io/after-zero/';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -15,7 +15,7 @@
   const dom = {
     screens: $$('.screen'),
     boot: $('#boot-screen'), bootStatus: $('#boot-status'), bootTime: $('#boot-time'), bootProgressBar: $('#boot-progress-bar'),
-    bootProgressValue: $('#boot-progress-value'), bootKicker: $('#boot-kicker'), bootSkip: $('#boot-skip'),
+    bootProgressValue: $('#boot-progress-value'), bootKicker: $('#boot-kicker'), bootSkip: $('#boot-skip'), bootTransition: $('.boot-transition'),
     title: $('#title-screen'), game: $('#game-screen'), ending: $('#ending-screen'),
     newGame: $('#new-game-btn'), continue: $('#continue-btn'), collection: $('#collection-btn'), titleSettings: $('#title-settings-btn'), about: $('#about-btn'),
     zeroRoute: $('#zero-route-btn'), zeroError: $('#zero-error'), zeroErrorConfirm: $('#zero-error-confirm'),
@@ -87,6 +87,8 @@
   let decoderSession = null;
   let bootTimers = [];
   let bootComplete = false;
+  let bootAudioStarted = false;
+  let bootTransitioning = false;
   let silenceTimer = null;
 
   function savePersistent() {
@@ -440,10 +442,78 @@
       this.noise(1.2, .06, 0, { filterType: 'lowpass', frequency: 210, q: .65 });
       this.tone(36, 1.25, .052, 'sine', { endFrequency: 29 });
     }
+    roomTone() {
+      this.noise(.34, .016, -.22, { filterType: 'highpass', frequency: 1850, q: .28 });
+      this.tone(96, .22, .013, 'triangle', { pan: .16 });
+    }
+    footsteps() {
+      [0, .2, .43].forEach((delay, index) => {
+        this.noise(.12, .026 - index * .003, index % 2 ? .2 : -.2, { delay, filterType: 'lowpass', frequency: 230, q: .65 });
+        this.tone(74 - index * 4, .13, .018, 'sine', { delay, endFrequency: 48 });
+      });
+    }
+    cup() {
+      this.tone(1260, .14, .022, 'sine', { pan: -.15 });
+      this.tone(860, .2, .016, 'triangle', { delay: .035, pan: .18 });
+    }
+    cameraTap() {
+      this.tone(760, .045, .026, 'square', { pan: .18 });
+      this.noise(.065, .017, -.12, { filterType: 'highpass', frequency: 2200 });
+    }
+    pageTurn() {
+      this.noise(.32, .025, -.24, { filterType: 'bandpass', frequency: 1350, q: .6 });
+      this.noise(.22, .017, .26, { delay: .12, filterType: 'highpass', frequency: 1950 });
+    }
+    keyboard() {
+      [0, .07, .15, .24, .31].forEach((delay, index) => this.tone(index % 2 ? 720 : 590, .032, .017, 'square', { delay, pan: (index % 3 - 1) * .18 }));
+    }
+    door() {
+      this.tone(118, .42, .036, 'triangle', { endFrequency: 73, pan: -.22 });
+      this.noise(.26, .026, .24, { delay: .08, filterType: 'bandpass', frequency: 420, q: .8 });
+    }
+    radioChime() {
+      this.tone(392, .26, .026, 'sine', { pan: -.22 });
+      this.tone(587.33, .34, .021, 'sine', { delay: .11, pan: .2 });
+      this.noise(.24, .011, 0, { filterType: 'highpass', frequency: 2200 });
+    }
+    rainClose() {
+      this.noise(.75, .031, -.3, { filterType: 'lowpass', frequency: 2600, q: .22 });
+      this.noise(.58, .022, .35, { delay: .1, filterType: 'bandpass', frequency: 480, q: .48 });
+    }
+    breath() {
+      this.noise(.52, .014, .18, { filterType: 'bandpass', frequency: 620, q: .72, attack: .08 });
+    }
+    warmth() {
+      this.tone(261.63, .46, .024, 'sine', { pan: -.18 });
+      this.tone(329.63, .58, .018, 'sine', { delay: .09, pan: .2 });
+    }
+    zeroLink() {
+      this.tone(174.61, .24, .026, 'triangle', { pan: -.2 });
+      this.tone(261.63, .31, .017, 'sine', { delay: .055, pan: .24 });
+      this.noise(.16, .009, 0, { filterType: 'bandpass', frequency: 920, q: 1.1 });
+    }
     bootLock() {
       this.tone(110, .42, .043, 'triangle', { endFrequency: 220, pan: -.2 });
       this.tone(440, .48, .032, 'sine', { delay: .11, pan: .22 });
       this.tone(880, .22, .023, 'sine', { delay: .28 });
+    }
+    bootSweep() {
+      this.noise(.62, .032, -.36, { filterType: 'bandpass', frequency: 180, endFrequency: 3100, q: 1.1 });
+      this.tone(72, .58, .028, 'triangle', { endFrequency: 146, pan: .25 });
+    }
+    bootProbe() {
+      this.tone(880, .075, .026, 'sine', { pan: -.32 });
+      this.tone(1320, .095, .019, 'sine', { delay: .055, pan: .34 });
+    }
+    bootUnknown() {
+      this.noise(.48, .026, .28, { filterType: 'bandpass', frequency: 1120, q: 2.4 });
+      this.tone(127, .44, .026, 'triangle', { detune: -13, endFrequency: 119, pan: -.25 });
+      this.tone(190.5, .48, .016, 'sine', { delay: .06, detune: 7, pan: .3 });
+    }
+    bootCrash() {
+      this.noise(.88, .056, 0, { filterType: 'bandpass', frequency: 2450, endFrequency: 170, q: 1.7 });
+      this.tone(310, .76, .054, 'sawtooth', { endFrequency: 37, pan: -.18 });
+      this.tone(47, .84, .045, 'sine', { delay: .06, endFrequency: 31, pan: .2 });
     }
     success() {
       [220, 277.18, 329.63].forEach((note, index) => this.tone(note, .58, .034 - index * .004, 'sine', { delay: index * .09, pan: (index - 1) * .22 }));
@@ -460,7 +530,11 @@
         powerDown: () => this.powerDown(), powerUp: () => this.powerUp(), water: () => this.water(),
         gate: () => this.gate(), monitor: () => this.monitor(), flatline: () => this.flatline(),
         fire: () => this.fire(), glass: () => this.glass(), mute: () => this.muteDrop(),
-        thunder: () => this.thunder(), signal: () => this.signal(), success: () => this.success(), failure: () => this.failure()
+        thunder: () => this.thunder(), room: () => this.roomTone(), footsteps: () => this.footsteps(),
+        cup: () => this.cup(), cameraTap: () => this.cameraTap(), page: () => this.pageTurn(),
+        keyboard: () => this.keyboard(), door: () => this.door(), radioChime: () => this.radioChime(),
+        rainClose: () => this.rainClose(), breath: () => this.breath(), warmth: () => this.warmth(),
+        zeroLink: () => this.zeroLink(), signal: () => this.signal(), success: () => this.success(), failure: () => this.failure()
       };
       if (!handlers[name]) return;
       const now = performance.now();
@@ -609,7 +683,10 @@
         : /signal|relay|seven_channels|missing|five_deleted|sea/.test(bg) ? 'zero'
           : /cg_|morning|day|lounge/.test(bg) ? 'warm' : 'calm';
       if (node.audioIntensity) mode = node.audioIntensity;
-      else if (node.speaker === '零号' || node.speaker === '陌生男声') mode = 'zero';
+      else if ((node.speaker === '零号' || node.speaker === '陌生男声') && node.signalState === 'unstable') mode = 'zero';
+      else if (node.speaker === '零号' || node.speaker === '陌生男声') {
+        mode = node.signalState === 'conflict' ? 'tension' : (/alert|city_signal/.test(bg) ? 'tension' : 'calm');
+      }
       else if (node.speaker === '音效' || ['impact', 'gate', 'feedback', 'powerDown', 'monitor', 'fire', 'glass'].includes(node.sfx)
         || /警报|倒计时|坍塌|爆炸|冲击|删除|死亡|燃烧|红区|断开|失控|水位/.test(text)) mode = 'crisis';
       else if (!/alert|signal|relay|missing|sea/.test(bg) && /早餐|热汤|笑|牵住|拥抱|靠在|陪你|留下来|愿意|温度|心跳/.test(text)) mode = 'warm';
@@ -708,52 +785,71 @@
     bootTimers = [];
   }
 
-  function finishBoot() {
-    if (bootComplete) {
-      clearBootTimers();
-      dom.boot.classList.add('complete');
-      dom.newGame.focus();
-      setTimeout(playZeroTitleUnlock, 180);
-      return;
-    }
-    bootComplete = true;
+  function finishBoot(immediate = false) {
+    if (bootComplete || bootTransitioning) return;
+    bootTransitioning = true;
     clearBootTimers();
     dom.bootProgressBar.style.width = '100%';
     dom.bootProgressValue.textContent = '100%';
     dom.bootStatus.textContent = 'SIGNAL LOCKED';
     dom.bootTime.textContent = '00:13';
-    dom.boot.classList.add('locked');
+    dom.boot.classList.add('locked', 'exiting');
+    if (bootAudioStarted && !immediate) audio.bootCrash();
+    const reduced = immediate || persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     bootTimers.push(setTimeout(() => {
+      dom.boot.classList.add('title-reveal');
+    }, reduced ? 0 : 390));
+    bootTimers.push(setTimeout(() => {
+      bootComplete = true;
+      bootTransitioning = false;
       dom.boot.classList.add('complete');
       dom.newGame.focus();
       setTimeout(playZeroTitleUnlock, 180);
-    }, persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 50 : 780));
+    }, reduced ? 60 : 1380));
   }
 
   function unlockFromBoot() {
+    if (bootComplete || bootTransitioning) return;
     audio.ensure();
+    if (!bootAudioStarted) {
+      bootAudioStarted = true;
+      dom.boot.classList.add('audio-connected');
+      dom.bootSkip.querySelector('span').textContent = 'AUDIO ONLINE';
+      dom.bootSkip.querySelector('b').textContent = '声音已接入 · 点击跳过';
+      audio.bootSweep();
+      playBoot(true);
+      return;
+    }
     audio.bootLock();
     finishBoot();
   }
 
-  function playBoot() {
-    if (!dom.boot || bootComplete) return;
+  function playBoot(withAudio = false) {
+    if (!dom.boot || bootComplete || bootTransitioning) return;
+    clearBootTimers();
     const reduced = persistent.settings.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) { finishBoot(); return; }
+    if (reduced) { finishBoot(true); return; }
     const steps = [
-      [160, 8, 'SCANNING 87.5 — 108.0 MHz', '--:--'],
-      [620, 24, 'NO CARRIER · RETRYING', '00:--'],
-      [1180, 43, 'UNREGISTERED BAND DETECTED', '00:1-'],
-      [1760, 67, 'SYNCHRONIZING PHASE', '00:13'],
-      [2350, 86, 'VOICEPRINT OUTSIDE SYSTEM', '00:13'],
-      [2860, 100, 'SIGNAL LOCKED', '00:13']
+      [180, 8, 'SCANNING 87.5 — 108.0 MHz', '--:--', 'probe'],
+      [760, 24, 'NO CARRIER · RETRYING', '00:--', 'probe'],
+      [1450, 43, 'UNREGISTERED BAND DETECTED', '00:1-', 'unknown'],
+      [2220, 67, 'SYNCHRONIZING PHASE', '00:13', 'sweep'],
+      [3000, 86, 'VOICEPRINT OUTSIDE SYSTEM', '00:13', 'unknown'],
+      [3720, 100, 'SIGNAL LOCKED', '00:13', 'lock']
     ];
-    steps.forEach(([delay, progress, status, time], index) => {
+    steps.forEach(([delay, progress, status, time, cue], index) => {
       bootTimers.push(setTimeout(() => {
         dom.bootProgressBar.style.width = `${progress}%`;
         dom.bootProgressValue.textContent = `${String(progress).padStart(3, '0')}%`;
         dom.bootStatus.textContent = status;
         dom.bootTime.textContent = time;
+        dom.boot.dataset.phase = cue;
+        if (withAudio && bootAudioStarted) {
+          if (cue === 'probe') audio.bootProbe();
+          if (cue === 'unknown') audio.bootUnknown();
+          if (cue === 'sweep') audio.bootSweep();
+          if (cue === 'lock') audio.bootLock();
+        }
         if (index === 3) dom.boot.classList.add('locked');
         if (index === steps.length - 1) finishBoot();
       }, delay));
@@ -802,15 +898,18 @@
     const impact = node.speaker === '音效' || /啸叫|冲击|敲门|爆出尖锐|线路随即断开/.test(text);
     if (node.sfx) audio.playCue(node.sfx);
     if (zero) {
-      showSignalEvent('CH 00', 'UNREGISTERED VOICE', true);
-      if (Date.now() - lastSignalCueAt < 900) return;
+      const state = node.signalState || 'stable';
+      showSignalEvent('CH 00', state === 'unstable' ? 'SIGNAL DESYNC' : state === 'conflict' ? 'PRIORITY CONFLICT' : 'ZERO RELAY ONLINE', state === 'unstable');
+      if (Date.now() - lastSignalCueAt < (state === 'unstable' ? 900 : 1500)) return;
       lastSignalCueAt = Date.now();
-      audio.duck();
-      audio.whisper();
-      dom.game.classList.remove('signal-corrupt');
-      void dom.game.offsetWidth;
-      dom.game.classList.add('signal-corrupt');
-      setTimeout(() => dom.game.classList.remove('signal-corrupt'), 620);
+      if (state === 'unstable') {
+        audio.duck();
+        if (!node.sfx) audio.whisper();
+        dom.game.classList.remove('signal-corrupt');
+        void dom.game.offsetWidth;
+        dom.game.classList.add('signal-corrupt');
+        setTimeout(() => dom.game.classList.remove('signal-corrupt'), 620);
+      } else if (!node.sfx) audio.playCue('zeroLink');
     } else if (impact) {
       showSignalEvent('SIGNAL', 'LEVEL EXCEEDED', true);
       if (node.sfx) return;
@@ -1551,7 +1650,7 @@
       signal.innerHTML = '<div><span>FM · NIGHT RECEIVER</span><b>00:13</b><small>CHANNEL 06 EXISTS</small></div>';
       const copy = document.createElement('div');
       copy.className = 'about-copy';
-      copy.innerHTML = `<small>${RELEASE} · NIGHT MIX</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>6-LAYER</b><span>动态夜间声场</span></div></div>`;
+      copy.innerHTML = `<small>${RELEASE} · ZERO RELAY</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>87 CUES</b><span>动态夜间声场</span></div></div>`;
       const links = document.createElement('div');
       links.className = 'about-links';
       const repo = document.createElement('a'); repo.href = 'https://github.com/KevinKaslana093/after-zero'; repo.target = '_blank'; repo.rel = 'noopener'; repo.textContent = 'GitHub · 源码与版本';
@@ -1565,12 +1664,19 @@
   function replayBoot() {
     clearBootTimers();
     bootComplete = false;
-    dom.boot.classList.remove('complete', 'locked');
+    bootTransitioning = false;
+    bootAudioStarted = Boolean(audio.ctx && !persistent.settings.muted);
+    dom.boot.classList.remove('complete', 'locked', 'exiting', 'title-reveal', 'audio-connected');
+    if (bootAudioStarted) dom.boot.classList.add('audio-connected');
+    delete dom.boot.dataset.phase;
     dom.bootStatus.textContent = 'SEARCHING FOR SIGNAL';
     dom.bootTime.textContent = '--:--';
     dom.bootProgressBar.style.width = '0%';
     dom.bootProgressValue.textContent = '000%';
-    playBoot();
+    dom.bootSkip.querySelector('span').textContent = bootAudioStarted ? 'AUDIO ONLINE' : 'CONNECT AUDIO';
+    dom.bootSkip.querySelector('b').textContent = bootAudioStarted ? '声音已接入 · 点击跳过' : '点击接入声音';
+    if (bootAudioStarted) audio.bootSweep();
+    playBoot(bootAudioStarted);
   }
 
   function shareCardDataURL(endingKey) {

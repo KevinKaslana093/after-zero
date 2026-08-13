@@ -1324,6 +1324,39 @@
     if (nodes[id]) nodes[id].audioIntensity = intensity;
   });
 
+  // 零号不是“出现即危险”的恐怖音源。前期他是通过旧中继站协助团队的盟友，
+  // 后期真正让人不安的是方案冲突；只有线路本身失稳时才使用爆错和画面撕裂。
+  const zeroSignalStates = {
+    unstable: ['v4_d1_howl_05', 'v4_d4_exterior_08', 'v4_d4_exterior_10'],
+    conflict: [
+      'v4_d5_alarm_12', 'v4_d5_alarm_14', 'v4_d5_alarm_16', 'v4_d5_counter_08',
+      'v4_lc_precrisis_03', 'v4_lc_precrisis_05', 'v4_ts_tunnel_07', 'v4_ts_tunnel_09',
+      'v4_sm_descent_02', 'v4_gw_night_09', 'v4_gw_crisis_07',
+      'v4_jy_field_07', 'v4_jy_field_09', 'v4_jy_core_07'
+    ]
+  };
+  zeroSignalStates.unstable.forEach(id => { if (nodes[id]) nodes[id].signalState = 'unstable'; });
+  zeroSignalStates.conflict.forEach(id => { if (nodes[id]) nodes[id].signalState = 'conflict'; });
+
+  // 危机之外的声音承担“这里真的有人生活过”的沉浸感：杯子、纸页、键盘、脚步、
+  // 近处雨声和呼吸不会抢对白，只在场景落点出现一次。
+  const quietSoundCues = {
+    intro_01: 'rainClose', studio_06: 'cameraTap', studio_21: 'footsteps', tangsha_01: 'rainClose',
+    v4_d1_arrival_01: 'rainClose', v4_d1_arrival_10: 'door', v4_d1_meet_01: 'room',
+    v4_d1_meet_02: 'cameraTap', v4_d1_broadcast_01: 'radioChime', v4_d1_supper_01: 'room',
+    v4_d2_morning_01: 'keyboard', v4_d2_daily_01: 'cup', v4_d2_daily_06: 'water',
+    v4_d3_open_01: 'footsteps', v4_d3_studio_01: 'keyboard', v4_d3_studio_05: 'cup',
+    v4_d4_depart_01: 'footsteps', v4_d4_exterior_01: 'rainClose', v4_d4_corridor_01: 'door',
+    v4_d5_rest_01: 'cup', v4_lc_open_01: 'room', v4_lc_good_09: 'heartbeat',
+    v4_ts_open_01: 'rainClose', v4_ts_after1_07: 'warmth', v4_ts_good_11: 'breath',
+    v4_sm_open_01: 'room', v4_sm_descent_22: 'heartbeat', v4_gw_night_01: 'breath',
+    v4_gw_shift_04: 'cup', v4_jy_boxes_01: 'page', v4_jy_boxes_07: 'page',
+    v3_epilogue_01: 'warmth', v3_epilogue_05: 'cameraTap'
+  };
+  Object.entries(quietSoundCues).forEach(([id, sfx]) => {
+    if (nodes[id] && !nodes[id].sfx) nodes[id].sfx = sfx;
+  });
+
   story.preload = [
     backgrounds.v4_rooftop_sunset.src,
     backgrounds.v4_studio_day.src,
