@@ -63,6 +63,27 @@ const save = {
   const audioState = await audioPage.evaluate(() => ({ state: document.body.dataset.audioState, scene: document.body.dataset.audioScene, cue: document.body.dataset.lastSfx }));
   if (audioState.state !== 'active' || audioState.scene !== 'street' || audioState.cue !== 'shutter') errors.push(`wrong live audio state: ${JSON.stringify(audioState)}`);
   await audioPage.close();
+
+  const zeroPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const zeroSave = {
+    ...save,
+    settings: { ...save.settings, volume: 42, musicVolume: 84, sfxVolume: 88, muted: false },
+    endings: [], zeroTitleSeen: false,
+    autoSave: { ...save.autoSave, state: { ...save.autoSave.state, nodeId: 'v4_d2_call_06', currentBg: 'v4_studio_signal' } }
+  };
+  await zeroPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), zeroSave);
+  await zeroPage.goto(`${url}&zero=stable`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await zeroPage.waitForFunction(() => document.querySelector('#boot-screen')?.classList.contains('complete'));
+  await zeroPage.click('#continue-btn');
+  await zeroPage.waitForSelector('#signal-event.show');
+  const zeroState = await zeroPage.evaluate(() => ({
+    label: document.querySelector('#signal-event-label')?.textContent,
+    danger: document.querySelector('#signal-event')?.classList.contains('danger'),
+    corrupt: document.querySelector('#game-screen')?.classList.contains('signal-corrupt'),
+    intensity: document.body.dataset.audioIntensity
+  }));
+  if (zeroState.label !== 'ZERO RELAY ONLINE' || zeroState.danger || zeroState.corrupt || zeroState.intensity !== 'calm') errors.push(`stable Zero framed as hostile: ${JSON.stringify(zeroState)}`);
+  await zeroPage.close();
   if (errors.length) throw new Error(errors.join('; '));
   await browser.close();
   console.log(`Live smoke valid: ${url}`);
