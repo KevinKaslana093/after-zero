@@ -17,7 +17,7 @@ const assertNode = (source, target, field) => {
 
 for (const [id, node] of Object.entries(story.nodes)) {
   if (!node || !node.type) errors.push(`${id} has no type`);
-  if (!['line', 'choice', 'gate', 'routeGate', 'ending', 'silence'].includes(node.type)) errors.push(`${id} has unsupported type ${node.type}`);
+  if (!['line', 'choice', 'gate', 'routeGate', 'ending', 'silence', 'console', 'mission', 'minigame'].includes(node.type)) errors.push(`${id} has unsupported type ${node.type}`);
   if (node.bg && !story.backgrounds[node.bg]) errors.push(`${id}.bg -> missing background ${node.bg}`);
   if (node.char != null && !story.characters[node.char]) errors.push(`${id}.char -> missing character ${node.char}`);
   assertNode(id, node.next, 'next');
@@ -28,7 +28,13 @@ for (const [id, node] of Object.entries(story.nodes)) {
   if (node.trueRoute) assertNode(id, node.trueRoute.next, 'trueRoute.next');
   if (node.type === 'ending' && !story.endings[node.ending]) errors.push(`${id} -> missing ending ${node.ending}`);
   if (node.type === 'silence' && (!node.next || !Number.isFinite(node.duration))) errors.push(`${id} has invalid silence transition`);
+  if (node.type === 'console' && !node.next) errors.push(`${id} has invalid console transition`);
+  if (node.type === 'mission' && (!node.next || !node.objective || !Array.isArray(node.confirmed))) errors.push(`${id} has invalid mission log`);
+  if (node.type === 'minigame' && (!node.next || !node.game)) errors.push(`${id} has invalid minigame transition`);
 }
+
+const minigameNodes = Object.values(story.nodes).filter(node => node.type === 'minigame');
+if (minigameNodes.length !== 9) errors.push(`expected 9 authored minigames, found ${minigameNodes.length}`);
 
 const silenceNodes = Object.values(story.nodes).filter(node => node.type === 'silence');
 if (silenceNodes.length !== 5) errors.push(`expected 5 route silence beats, found ${silenceNodes.length}`);

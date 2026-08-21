@@ -115,8 +115,8 @@ async function forceDecoderFailure(page) {
 
   const cuePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const cueSave = JSON.parse(JSON.stringify(save));
-  cueSave.autoSave.state.nodeId = 'v4_d1_howl_05';
-  cueSave.autoSave.state.currentBg = 'v4_studio_signal';
+  cueSave.autoSave.state.nodeId = 'v4_d4_exterior_08';
+  cueSave.autoSave.state.currentBg = 'v4_relay_exterior';
   cueSave.endings = [];
   cueSave.zeroTitleSeen = false;
   await cuePage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), cueSave);
@@ -181,10 +181,10 @@ async function forceDecoderFailure(page) {
   await bootPage.screenshot({ path: path.join(output, 'after-zero-boot-transition.png'), fullPage: true });
   await waitForBoot(bootPage);
   const version = await bootPage.locator('.title-footer b').textContent();
-  if (!version.includes('V4.6')) throw new Error(`unexpected local version: ${version}`);
+  if (!version.includes('V4.8')) throw new Error(`unexpected local version: ${version}`);
   await bootPage.click('#about-btn');
   await bootPage.waitForSelector('.about-sheet');
-  if (!(await bootPage.locator('.about-copy').textContent()).includes('1712')) throw new Error('about screen did not show current story size');
+  if (!(await bootPage.locator('.about-copy').textContent()).includes('1727')) throw new Error('about screen did not show current story size');
   await bootPage.click('.close-button');
   await bootPage.click('#title-settings-btn');
   const settingLabels = await bootPage.locator('.setting-row label').allTextContents();
@@ -239,8 +239,25 @@ async function forceDecoderFailure(page) {
   await silencePage.screenshot({ path: path.join(output, 'after-zero-silence.png'), fullPage: true });
   await silencePage.keyboard.press('Escape');
   if (!(await silencePage.locator('#modal').evaluate(element => element.classList.contains('hidden')))) throw new Error('silence beat was interrupted by menu');
-  await silencePage.waitForSelector('#choice-layer:not(.hidden)', { timeout: 4000 });
+  await silencePage.waitForSelector('#story-minigame:not(.hidden)', { timeout: 4000 });
+  if (!(await silencePage.locator('#minigame-title').textContent()).includes('声音')) throw new Error('route silence did not lead into its authored minigame');
   await silencePage.close();
+
+  const routeLogPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const routeLogSave = JSON.parse(JSON.stringify(save));
+  routeLogSave.endings = ['guwanqing'];
+  routeLogSave.autoSave.state.nodeId = 'ending_guwanqing';
+  routeLogSave.autoSave.state.history = [{ speaker: '顾晚晴', text: 'SHOULD_NOT_LEAK_TO_NEXT_ROUTE', nodeId: 'old-route' }];
+  await routeLogPage.addInitScript(value => localStorage.setItem('after-zero-save-v1', JSON.stringify(value)), routeLogSave);
+  await routeLogPage.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForBoot(routeLogPage);
+  await routeLogPage.click('#continue-btn');
+  await routeLogPage.waitForSelector('#ending-screen.active');
+  await routeLogPage.click('#ending-restart-btn');
+  await routeLogPage.waitForSelector('#choice-layer:not(.hidden)');
+  const replayHistory = await routeLogPage.evaluate(() => JSON.parse(localStorage.getItem('after-zero-save-v1')).autoSave.state.history);
+  if (replayHistory.some(item => item.text === 'SHOULD_NOT_LEAK_TO_NEXT_ROUTE')) throw new Error('completed route dialogue leaked into next route LOG');
+  await routeLogPage.close();
 
   const audioPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const audioSave = JSON.parse(JSON.stringify(save));

@@ -68,15 +68,15 @@
   const d5 = chapter('D5', '第五天 · 所有人都在');
 
   addChain('v4_d1_arrival', d1, 'v4_rooftop_sunset', [
-    { speaker: '旁白', char: null, location: true, text: '八年前的00:13，哥哥给我打来最后一通电话。那天我们刚吵完架，我看着屏幕亮到熄灭，没有接。' },
-    ['哥哥的录音', '“江临，如果你听见这段话——”', null],
-    ['旁白', '录音在这里断掉。八年后，损坏文件忽然自行修复，并附上临海广播中心的招聘邮件。', null],
-    ['旁白', '黄昏的天台上，旧天线像一根扎进云层的针。我来这里不是因为愿意为哥哥付出一切，只是不想让那通没有接起的电话替我决定余生。', null],
+    { speaker: '旁白', char: null, location: true, text: '临海广播中心，18:47。距离我接到那通不可能的来电，过去了三个小时。' },
+    ['旁白', '手机只显示八年前留下的联系人备注：江朔——我失踪的哥哥。号码接通三秒，无法确认说话的人；背景里却混进了这座电台的识别信号。', null],
+    ['旁白', '我做了六年音频节目制作。进入一间正在招聘夜间临时制作人的电台不难，难的是装作自己只为工作而来。', null],
+    ['旁白', '今晚的表面任务很简单：完成第一场直播。私下的目标也只有一个：查清这个停用号码为什么会从这里再次打来。', null],
     ['林澄', '“江临？”', 'lincheng'],
     ['旁白', '她站在设备间门口，手里夹着两张台本，神情安静得像已经等了很久。', 'lincheng'],
     ['林澄', '“我是林澄，《零点之后》的主持人。你的简历在垃圾邮件里躺了十一天。”', 'lincheng'],
     ['我', '“所以你把我叫来，是因为缺制作人？”', 'lincheng'],
-    ['林澄', '“也因为你修复了那段本来不该被修复的录音。”', 'lincheng'],
+    ['林澄', '“今晚先把节目安全播完。你想问的其他事，下播以后谈。”', 'lincheng'],
     ['旁白', '她没有解释，先替我推开门。天线红灯在身后亮起，时间还没到零点。', null]
   ], 'v4_d1_meet_01');
 
@@ -94,25 +94,33 @@
     ['林澄', '“先别吓他。今晚只做普通直播。”', 'lincheng'],
     ['唐砂', '“她每次说‘普通’，最后都不普通。”', 'tangsha'],
     ['旁白', '她们争论宵夜吃什么，苏弥把我的工位权限改成“第六席”，顾晚晴顺手将止痛片放进公共抽屉。那些琐碎动作比欢迎词更像欢迎。', null]
-  ], 'v4_d1_howl_01');
+  ], 'v47_producer_console');
 
   addChain('v4_d1_howl', d1, 'v4_studio_signal', [
-    ['音效', '——嗡！', null],
-    ['旁白', '试音刚开始，返听里突然爆出尖锐啸叫。整排电平表撞到红区，调音台却找不到任何输入源。', null],
-    ['苏弥', '“主输出归零，啸叫还在。不是室内回授。”', 'sumi'],
-    ['林澄', '“所有人摘耳机。”', 'lincheng'],
-    ['陌生男声', '“关闭三号辅助发送。延迟补偿改成负十三毫秒。”', null],
-    ['我', '“谁在说话？”', null],
-    ['陌生男声', '“旧中继站，零号。先解决声音，再问身份。”', null],
-    ['苏弥', '“三号辅助根本没有接线。”', 'sumi'],
-    ['零号', '“所以系统才看不见它。江临，左手第二排，橙色旋钮。”', null],
-    ['旁白', '我照做。啸叫像被刀切断，窗玻璃上的震纹也同时停止。', null],
-    ['唐砂', '“他怎么知道你的名字？”', 'tangsha'],
-    ['零号', '“接入记录里写着。今晚不要停播，异常会沿着空频道寻找下一台接收器。”', null],
-    ['林澄', '“你为什么帮我们？”', 'lincheng'],
-    ['零号', '“因为八年前没人接起的时候，我就在这里。”', null],
-    ['旁白', '线路随即断开。苏弥保存波形，文件署名却不是零号，而是一串时间：00:13。', null]
-  ], 'v4_d1_first_choice');
+    ['旁白', '负十三毫秒写入的瞬间，啸叫被整齐切断。玻璃停止震动，异常波形却已经被我保存下来。', null],
+    ['苏弥', '“你怎么知道要动三号辅助发送？”', 'sumi'],
+    ['我', '“有人接进了内部返听。他只给了提示，最后两步是我做的。”', null],
+    ['陌生男声', '“动作比八年前快。至少这一次，没有让它响到最后。”', null],
+    ['我', '“你是谁？”', null],
+    ['陌生男声', '“旧中继站，零号。你可以先把我当成今晚的技术支援。”', null],
+    ['唐砂', '“技术支援会知道新人的名字，还会藏在不存在的线路里？”', 'tangsha'],
+    ['零号', '“比对你们刚保存的波形。它和那通停用号码的底噪，都经过临海广播中心的旧中继。”', null],
+    ['我', '“你为什么知道那通电话？”', null],
+    ['零号', '“因为它把你带到了这里。知道一段线路，不等于知道电话另一端是谁。”', null],
+    ['林澄', '“那就解释为什么不能停播。”', 'lincheng'],
+    ['零号', '“00:13会再来一次。频道一旦空下来，它就会跳向城里下一台仍在接收的设备。”', null],
+    ['我', '“所以今晚先让它留在这间直播室，再追踪它从哪里进来。”', null],
+    ['零号', '“对。把第一晚播完，你会得到下一段信号。”', null],
+    ['旁白', '线路断开。苏弥将波形锁进只读目录。我只证明了那通电话与电台有关，离证明电话另一端是谁还差得很远。', null]
+  ], 'v47_mission_signal');
+
+  nodes.v47_producer_console = { type: 'console', chapter: d1, bg: 'v4_studio_day', next: 'v4_d1_howl_01' };
+  nodes.v47_mission_signal = {
+    type: 'mission', chapter: d1, bg: 'v4_studio_signal', kicker: 'FIRST SIGNAL CAPTURED', title: '主线记录 · 第一份信号',
+    confirmed: ['停用号码在通讯录中备注为江朔', '来电与00:13异常都经过临海广播中心'],
+    pending: ['电话另一端是否真是江朔：未确认', '零号为何知道这通电话：未确认'],
+    objective: '完成首夜直播，让00:13信号留在电台并再次出现。', next: 'v4_d1_first_choice'
+  };
 
   nodes.v4_d1_first_choice = {
     type: 'choice', chapter: d1, bg: 'v4_studio_day', prompt: '距离开播还有十分钟，你先去帮谁？',
@@ -152,7 +160,14 @@
     ['我', '“给我们一个相信你的理由。”', null],
     ['零号', '“因为它先学会的，会是按下快门的人。”', null],
     ['旁白', '唐砂脸上的笑消失了。她按下删除。相机显示“已删除”，玻璃里的第七道倒影却抬起了头。', null]
-  ], 'v4_d2_morning_01');
+  ], 'v47_mission_d1');
+
+  nodes.v47_mission_d1 = {
+    type: 'mission', chapter: d1, bg: 'v4_convenience', kicker: 'DAY 01 · LOG CLOSED', title: '主线记录 · 第七道倒影',
+    confirmed: ['首夜直播顺利完成', '异常会占据被“记住”的空位', '零号能够监听电台外围设备'],
+    pending: ['第七道倒影的身份：未确认', '被删除照片的去向：未确认'],
+    objective: '封存合照与服务器记录，确认第七道倒影在寻找谁。', next: 'v4_d2_morning_01'
+  };
 
   addChain('v4_d2_morning', d2, 'v4_lounge_morning', [
     { speaker: '旁白', char: null, location: true, text: '第二天早上，我被豆浆的热气和苏弥拆键盘的声音叫醒。昨夜谁也没回家。' },
@@ -219,7 +234,14 @@
     ['旁白', '零号离线后，旧录音机自行转动。哥哥八年前未说完的后半句从磁带里挤了出来。', null],
     ['哥哥的录音', '“……不要相信那个声音。”', null],
     ['旁白', '房间里没有人说话。墙钟走过00:13，像一只眼睛眨了一下。', null]
-  ], 'v4_d3_open_01');
+  ], 'v47_mission_d2');
+
+  nodes.v47_mission_d2 = {
+    type: 'mission', chapter: d2, bg: 'v4_cg_city_recovery', kicker: 'DAY 02 · NEW VOICE RECOVERED', title: '主线记录 · 未说完的后半句',
+    confirmed: ['零号帮助团队阻止燃气事故', '每次修正会把压力推向其他节点', '江朔留下警告：“不要相信那个声音”'],
+    pending: ['江朔警告的对象：未确认', '下一处异常节点：未确认'],
+    objective: '核对江朔录音与零号操作日志，判断零号隐瞒了什么。', next: 'v4_d3_open_01'
+  };
 
   addChain('v4_d3_open', d3, 'v4_lobby_day', [
     { speaker: '旁白', char: null, location: true, text: '第三天，广播中心大厅的来访登记多了一行：第八位听众，00:13。保安坚称昨晚没有第八个人进门。' },
@@ -295,7 +317,14 @@
     ['林澄', '“你认识江临的哥哥。”', 'lincheng'],
     ['零号', '“去旧中继站。答案在那里。明晚之前。”', null],
     ['旁白', '线路关闭。屏幕上留下一个从未出现在城市地图里的坐标。', null]
-  ], 'v4_d4_depart_01');
+  ], 'v47_mission_d3');
+
+  nodes.v47_mission_d3 = {
+    type: 'mission', chapter: d3, bg: 'v4_cg_city_recovery', kicker: 'DAY 03 · CITY SIGNAL STABILIZED', title: '主线记录 · 所有结果的交点',
+    confirmed: ['五份伤亡名单已经清空', '江临是五种事故结果的共同交点', '零号确认旧中继站保存答案'],
+    pending: ['江朔与旧中继站的关系：未确认', '“第八位听众”的身份：未确认'],
+    objective: '在明晚以前抵达旧中继站，找到江朔失踪的直接证据。', next: 'v4_d4_depart_01'
+  };
 
   addChain('v4_d4_depart', d4, 'v4_lobby_all', [
     { speaker: '旁白', char: null, location: true, text: '第四天傍晚，六个人在大厅集合。没人讨论谁应该留下，因为每个人都带好了要去的东西。' },
@@ -362,7 +391,14 @@
     ['林澄', '“共同变量是江临。”', 'lincheng'],
     ['零号', '“明晚以前，我会找到别的办法。”', null],
     ['旁白', '他说得太平静，像一个已经替所有人做完决定的人。', null]
-  ], 'v4_d5_rest_01');
+  ], 'v47_mission_d4');
+
+  nodes.v47_mission_d4 = {
+    type: 'mission', chapter: d4, bg: 'v4_cg_seven_channels', kicker: 'DAY 04 · CORE LOG OPENED', title: '主线记录 · 五种未来',
+    confirmed: ['旧中继站保存五条被覆盖的人生', '屏幕外的{player}被系统识别为第八位听众', '五条未来同时保留时，系统会删除江临'],
+    pending: ['避免删除江临的方法：未确认', '把五条未来全部带回的方案：未确认'],
+    objective: '在00:13以前完成五路同步方案，拒绝系统提供的唯一答案。', next: 'v4_d5_rest_01'
+  };
 
   addChain('v4_d5_rest', d5, 'v4_cg_six_rest', [
     { speaker: '旁白', char: null, location: true, text: '第五天清晨，六个人回到直播间。没人睡够，也没人离开。桌上正好六只杯子，江临没有端着水让人把脉。' },
@@ -431,11 +467,11 @@
     type: 'choice', chapter: chapter('D5', '重新回答'), bg: 'v4_studio_signal', routeChoice: true,
     prompt: '失败留下了回响。这一次，你要重新接入哪一道信号？',
     choices: [
-      { label: '回答林澄的声音', hint: '父爱主义与自主选择', char: 'lincheng', next: 'v2_lock_lincheng_01', effect: { route: 'lincheng', affinity: { lincheng: 3 } } },
-      { label: '走进唐砂的取景框', hint: '决定论与自由意志', char: 'tangsha', next: 'v2_lock_tangsha_01', effect: { route: 'tangsha', affinity: { tangsha: 3 } } },
-      { label: '进入苏弥的双人频道', hint: '工具理性与人的价值', char: 'sumi', next: 'v2_lock_sumi_01', effect: { route: 'sumi', affinity: { sumi: 3 } } },
-      { label: '接过顾晚晴的值班表', hint: '有用与自我价值', char: 'guwanqing', next: 'v2_lock_guwanqing_01', effect: { route: 'guwanqing', affinity: { guwanqing: 3 } } },
-      { label: '念出纪遥保管的名字', hint: '叙事身份与记忆', char: 'jiyao', next: 'v2_lock_jiyao_01', effect: { route: 'jiyao', affinity: { jiyao: 3 } } }
+      { label: '回答林澄的声音', hint: '耳机中传来的心跳', char: 'lincheng', next: 'v2_lock_lincheng_01', effect: { route: 'lincheng', affinity: { lincheng: 3 } } },
+      { label: '走进唐砂的取景框', hint: '照片之外，多出来的那一天', char: 'tangsha', next: 'v2_lock_tangsha_01', effect: { route: 'tangsha', affinity: { tangsha: 3 } } },
+      { label: '进入苏弥的双人频道', hint: '错误日志里唯一正确的名字', char: 'sumi', next: 'v2_lock_sumi_01', effect: { route: 'sumi', affinity: { sumi: 3 } } },
+      { label: '接过顾晚晴的值班表', hint: '值班结束前，最后一位来电者', char: 'guwanqing', next: 'v2_lock_guwanqing_01', effect: { route: 'guwanqing', affinity: { guwanqing: 3 } } },
+      { label: '念出纪遥保管的名字', hint: '被档案划掉，却没有消失的人', char: 'jiyao', next: 'v2_lock_jiyao_01', effect: { route: 'jiyao', affinity: { jiyao: 3 } } }
     ]
   };
 
@@ -756,7 +792,7 @@
   nodes.v4_sm_choice1 = { type: 'choice', chapter: sm1, bg: 'v4_studio_signal', prompt: '苏弥要求你批准最优方案——', choices: [
     { label: '拒绝批准：“一定还有损失更小的算法。”', hint: '仍然只在同一套指标里寻找答案', next: 'v4_sm_daily_01' },
     { label: '把自己的名字改成第一候选', hint: '更换牺牲者，没有质疑计算方式', next: 'v4_sm_daily_01' },
-    { label: '【回响】删除“推荐”标记：“先告诉我，除去有用，你自己想留下什么。”', hint: '一个人的价值不能由系统用途穷尽', hiddenUntilUnlocked: true, requires: { echoes: 'sumi' }, next: 'v4_sm_daily_01', effect: { flags: { smEchoWant: true } } }
+      { label: '【回响】删除“推荐”标记：“先告诉我，除去有用，你自己想留下什么。”', hint: '推荐栏消失后，她第一次抬头看向你', hiddenUntilUnlocked: true, requires: { echoes: 'sumi' }, next: 'v4_sm_daily_01', effect: { flags: { smEchoWant: true } } }
   ] };
 
   addChain('v4_sm_daily', sm1, 'v4_lounge_late', [
@@ -1284,6 +1320,44 @@
   insertSilence('v4_gw_crisis_', 'v4_gw_choice4', 'v43_guwanqing_dead_air', 1650);
   insertSilence('v4_jy_core_', 'v4_jy_choice4', 'v43_jiyao_dead_air', 1450);
 
+  // V4.8：小游戏不是章节外的奖励，而是角色必须亲手完成的叙事动作。
+  const minigameNode = (game, chapterData, bg, next, effect) => ({ type: 'minigame', game, chapter: chapterData, bg, next, effect });
+
+  nodes.v48_game_city = minigameNode('city', d3, 'v4_cg_city_signal', 'v4_d3_save_01', { flags: { cityRelaySolved: true } });
+  nodes.v4_d3_decision.choices.forEach(choice => { choice.next = 'v48_game_city'; });
+
+  nodes.v48_game_crisis = minigameNode('crisis', d5, 'v4_studio_alert', 'v4_d5_counter_01', { flags: { redChannelHeld: true } });
+  const d5AlarmExit = Object.values(nodes).find(node => node.next === 'v4_d5_counter_01');
+  if (d5AlarmExit) d5AlarmExit.next = 'v48_game_crisis';
+
+  const routeGames = [
+    ['v43_lincheng_dead_air', 'v48_game_radio', 'radio', lc2, 'v4_studio_alert', 'v4_lc_choice4', 'linchengVoiceHeld'],
+    ['v43_tangsha_dead_air', 'v48_game_camera', 'camera', ts2, 'v4_cg_city_signal', 'v4_ts_choice4', 'tangshaFrameSolved'],
+    ['v43_sumi_dead_air', 'v48_game_code', 'code', sm2, 'v4_studio_alert', 'v4_sm_choice4', 'sumiRulePatched'],
+    ['v43_guwanqing_dead_air', 'v48_game_medical', 'medical', gw2, 'v4_studio_alert', 'v4_gw_choice4', 'guwanqingRecordSigned'],
+    ['v43_jiyao_dead_air', 'v48_game_folklore', 'folklore', jy2, 'v4_cg_seven_channels', 'v4_jy_choice4', 'jiyaoNameRestored']
+  ];
+  routeGames.forEach(([silenceId, gameId, game, chapterData, bg, next, flag]) => {
+    if (nodes[silenceId]) nodes[silenceId].next = gameId;
+    nodes[gameId] = minigameNode(game, chapterData, bg, next, { flags: { [flag]: true } });
+  });
+
+  nodes.v48_game_evidence = minigameNode('evidence', chapter('CH 06', '五线证物'), 'v4_cg_five_deleted', 'v3_final_battle_01', { flags: { fiveEvidenceLinked: true } });
+  if (nodes.v3_brothers_12) nodes.v3_brothers_12.next = 'v48_game_evidence';
+  nodes.v48_game_finalsend = minigameNode('finalsend', chapter('CH 06', '零点之后'), 'v4_studio_alert', 'v3_final_choice', { flags: { jianglinIdentityConfirmed: true } });
+  if (nodes.v3_final_battle_10) nodes.v3_final_battle_10.next = 'v48_game_finalsend';
+
+  const routeAtmosphere = {
+    lincheng: '耳机中传来的心跳', tangsha: '照片之外，多出来的那一天',
+    sumi: '错误日志里唯一正确的名字', guwanqing: '值班结束前，最后一位来电者',
+    jiyao: '被档案划掉，却没有消失的人'
+  };
+  [nodes.route_select, nodes.v4_route_reentry].filter(Boolean).forEach(routeNode => {
+    (routeNode.choices || []).forEach(choice => {
+      if (choice.char && routeAtmosphere[choice.char]) choice.hint = routeAtmosphere[choice.char];
+    });
+  });
+
   // V4.4 NIGHT MIX：只在真正改变空间或叙事状态的瞬间落音效。
   // 同一种声音可以由旧版和新版剧情共用，避免把文本关键词误判成一路乱响。
   const soundCues = {
@@ -1296,7 +1370,6 @@
     v3_true_awaken_07: 'phone', v3_true_awaken_11: 'mute', v3_rescue_return_03: 'water',
     v3_final_battle_07: 'phone', v3_epilogue_11: 'shutter',
 
-    v4_d1_arrival_02: 'tape', v4_d1_howl_01: 'feedback', v4_d1_howl_10: 'cut',
     v4_d1_howl_15: 'disconnect', v4_d1_supper_10: 'shutter', v4_d1_supper_17: 'delete',
     v4_d2_call_01: 'phone', v4_d2_rescue_01: 'vent', v4_d2_rescue_09: 'tape',
     v4_d2_rescue_11: 'clock', v4_d3_save_01: 'heartbeat', v4_d3_save_02: 'heartbeat',
@@ -1327,7 +1400,7 @@
   // 零号不是“出现即危险”的恐怖音源。前期他是通过旧中继站协助团队的盟友，
   // 后期真正让人不安的是方案冲突；只有线路本身失稳时才使用爆错和画面撕裂。
   const zeroSignalStates = {
-    unstable: ['v4_d1_howl_05', 'v4_d4_exterior_08', 'v4_d4_exterior_10'],
+    unstable: ['v4_d4_exterior_08', 'v4_d4_exterior_10'],
     conflict: [
       'v4_d5_alarm_12', 'v4_d5_alarm_14', 'v4_d5_alarm_16', 'v4_d5_counter_08',
       'v4_lc_precrisis_03', 'v4_lc_precrisis_05', 'v4_ts_tunnel_07', 'v4_ts_tunnel_09',

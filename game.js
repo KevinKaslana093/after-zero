@@ -5,7 +5,7 @@
   const STORAGE_KEY = 'after-zero-save-v1';
   const HERO_NAME = '江临';
   const DEFAULT_PLAYER_NAME = '未署名听众';
-  const RELEASE = 'V4.6';
+  const RELEASE = 'V4.8.2';
   const SITE_URL = 'https://kevinkaslana093.github.io/after-zero/';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -29,6 +29,11 @@
     choiceLayer: $('#choice-layer'), choicePrompt: $('#choice-prompt'), choices: $('#choices'),
     modal: $('#modal'), modalKicker: $('#modal-kicker'), modalTitle: $('#modal-title'), modalBody: $('#modal-body'),
     nameModal: $('#name-modal'), playerName: $('#player-name'), confirmName: $('#confirm-name-btn'),
+    callPrelude: $('#call-prelude'), callState: $('#call-state'), answerCall: $('#answer-call'), callContinue: $('#call-continue'), callSkip: $('#call-skip'),
+    producerConsole: $('#producer-console'), consoleBody: $('#console-body'), consoleProgress: $('#console-progress'),
+    missionUpdate: $('#mission-update'), missionKicker: $('#mission-kicker'), missionTitle: $('#mission-title'),
+    missionConfirmed: $('#mission-confirmed'), missionPending: $('#mission-pending'), missionObjective: $('#mission-objective'), missionContinue: $('#mission-continue'),
+    storyMinigame: $('#story-minigame'),
     endingBg: $('#ending-bg'), endingIndex: $('#ending-index'), endingTitle: $('#ending-title'), endingSubtitle: $('#ending-subtitle'), endingQuote: $('#ending-quote'),
     endingEvidence: $('#ending-evidence'), endingEvidenceTitle: $('#ending-evidence-title'), endingEvidenceMeta: $('#ending-evidence-meta'),
     decoderModal: $('#decoder-modal'), decoderBody: $('#decoder-body'), decoderStage: $('#decoder-stage'),
@@ -44,7 +49,7 @@
       muted: false, reducedMotion: false
     },
     endings: [], echoes: [], read: [], saves: [null, null, null, null, null, null], autoSave: null,
-    zeroTitleSeen: false, decoder: { solved: false, verified: [], attempts: 0 }
+    zeroTitleSeen: false, decoder: { solved: false, verified: [], attempts: 0 }, minigames: [], zeroMessage: ''
   };
 
   function loadPersistent() {
@@ -58,6 +63,8 @@
         endings: Array.isArray(raw.endings) ? raw.endings : [],
         echoes: Array.isArray(raw.echoes) ? raw.echoes : [],
         read: Array.isArray(raw.read) ? raw.read : [],
+        minigames: Array.isArray(raw.minigames) ? raw.minigames : [],
+        zeroMessage: typeof raw.zeroMessage === 'string' ? raw.zeroMessage.slice(0, 40) : '',
         decoder: {
           solved: Boolean(raw.decoder?.solved || (Array.isArray(raw.endings) && raw.endings.includes('true'))),
           verified: Array.isArray(raw.decoder?.verified) ? raw.decoder.verified : [],
@@ -90,6 +97,10 @@
   let bootAudioStarted = false;
   let bootTransitioning = false;
   let silenceTimer = null;
+  let pendingNewGame = null;
+  let callRingTimer = null;
+  let consoleSession = null;
+  let missionNext = null;
 
   function savePersistent() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent)); } catch (_) {}
@@ -372,6 +383,27 @@
         this.tone(index % 2 ? 1046.5 : 784, .13, .043, 'sine', { delay, pan: index < 2 ? -.22 : .22 });
         this.tone(index % 2 ? 523.25 : 392, .13, .025, 'triangle', { delay });
       });
+    }
+    callMemory() {
+      this.duck(.82, .06);
+      this.noise(.72, .024, -.3, { filterType: 'bandpass', frequency: 1180, q: 1.7 });
+      this.tone(146.83, .58, .027, 'triangle', { delay: .08, endFrequency: 138.59, pan: .24 });
+      this.tone(73.42, .74, .022, 'sine', { delay: .18, endFrequency: 55, pan: -.12 });
+    }
+    consoleStep(index = 0) {
+      this.tone(520 + index * 96, .12, .032, 'triangle', { pan: (index - 1) * .18 });
+      this.tone(780 + index * 84, .18, .019, 'sine', { delay: .055, pan: (1 - index) * .14 });
+    }
+    consoleError() {
+      this.tone(164, .17, .03, 'square', { endFrequency: 86, pan: -.18 });
+      this.noise(.13, .016, .2, { filterType: 'highpass', frequency: 1600 });
+    }
+    paperLog(lines = 1) {
+      this.noise(.18, .035, -.2, { filterType: 'bandpass', frequency: 520, q: .55 });
+      this.tone(92, .11, .025, 'triangle', { endFrequency: 61, pan: .18 });
+      for (let i = 0; i < Math.min(4, lines); i++) {
+        this.noise(.2, .009, i % 2 ? .18 : -.16, { delay: .28 + i * .16, filterType: 'highpass', frequency: 2100 + i * 130 });
+      }
     }
     vent() {
       this.noise(1.05, .052, -.1, { filterType: 'bandpass', frequency: 150, endFrequency: 960, q: .55 });
@@ -769,6 +801,9 @@
     }
   }
   const audio = new AudioEngine();
+  const minigames = window.AfterZeroMinigames && dom.storyMinigame
+    ? new window.AfterZeroMinigames(dom.storyMinigame, audio)
+    : null;
 
   function token(text = '') {
     return String(text)
@@ -1114,13 +1149,20 @@
       showNode(route.next, options);
     } else if (node.type === 'silence') {
       playSilence(node);
+    } else if (node.type === 'console') {
+      showProducerConsole(node);
+    } else if (node.type === 'mission') {
+      showMissionUpdate(node);
+    } else if (node.type === 'minigame') {
+      showStoryMinigame(node);
     } else if (node.type === 'ending') {
       receiveEnding(node.ending);
     }
   }
 
   function advance() {
-    if (!state || !dom.modal.classList.contains('hidden') || !dom.nameModal.classList.contains('hidden')) return;
+    if (!state || !dom.modal.classList.contains('hidden') || !dom.nameModal.classList.contains('hidden')
+      || (dom.storyMinigame && !dom.storyMinigame.classList.contains('hidden'))) return;
     const node = STORY.nodes[state.nodeId];
     if (!node || node.type !== 'line') return;
     audio.ensure();
@@ -1480,6 +1522,206 @@
     requestAnimationFrame(() => $('.decoder-submit', dom.decoderBody)?.focus());
   }
 
+  function finishCallPrelude() {
+    clearInterval(callRingTimer);
+    callRingTimer = null;
+    dom.callPrelude.classList.add('hidden');
+    const next = pendingNewGame;
+    pendingNewGame = null;
+    if (!next) return;
+    next.flags = { ...(next.flags || {}), heardJiangShuoCall: true };
+    setTimeout(() => startGame(next), persistent.settings.reducedMotion ? 0 : 260);
+  }
+
+  function answerCallPrelude() {
+    if (dom.callPrelude.classList.contains('answered')) return;
+    clearInterval(callRingTimer);
+    callRingTimer = null;
+    dom.callState.textContent = '连接中断 · RECOVERING';
+    dom.callPrelude.classList.add('answered');
+    audio.callMemory();
+    setTimeout(() => audio.disconnect(), 390);
+    setTimeout(() => dom.callContinue.focus(), persistent.settings.reducedMotion ? 20 : 760);
+  }
+
+  function startCallPrelude(gameState) {
+    pendingNewGame = clone(gameState);
+    dom.callPrelude.classList.remove('hidden', 'answered');
+    dom.callState.textContent = '正在呼入';
+    audio.phone();
+    clearInterval(callRingTimer);
+    callRingTimer = setInterval(() => audio.phone(), 1700);
+    requestAnimationFrame(() => dom.answerCall.focus());
+  }
+
+  function consoleMistake(button) {
+    audio.consoleError();
+    button?.classList.add('wrong');
+    setTimeout(() => button?.classList.remove('wrong'), 620);
+  }
+
+  function updateConsoleProgress(value) {
+    dom.consoleProgress.textContent = `${String(value).padStart(2, '0')} / 03`;
+  }
+
+  function renderProducerSetup() {
+    const session = consoleSession;
+    if (!session) return;
+    const completed = Number(session.tuned) + Number(session.lineReady) + Number(session.tested);
+    updateConsoleProgress(completed);
+    dom.consoleBody.innerHTML = `
+      <div class="console-intro"><small>NEW PRODUCER · ONBOARDING</small><h3>先把今晚的节目安全送上空气</h3><p>完成三项基础检查。每一次操作都会写入直播日志。</p></div>
+      <div class="console-task-grid">
+        <section class="console-task ${session.tuned ? 'done' : ''}"><small>CHECK 01 · CARRIER</small><h4>校准节目载波</h4><p>测试频率必须锁定在 87.5 MHz。</p><div class="console-readout">${session.frequency.toFixed(1)} MHz</div><div class="console-controls"><button data-console-action="freq-down">− 0.2</button><button data-console-action="freq-reset">RESET</button><button data-console-action="freq-up">＋ 0.2</button></div></section>
+        <section class="console-task ${session.lineReady ? 'done' : ''}"><small>CHECK 02 · HOTLINE</small><h4>接通听众热线</h4><p>今晚的值班表指定热线接入 CH B。</p><div class="console-readout">${session.lineReady ? 'CH B · READY' : 'NO ROUTE'}</div><div class="console-controls"><button data-console-action="line" data-value="A">CH A</button><button data-console-action="line" data-value="B" class="${session.lineReady ? 'selected' : ''}">CH B</button><button data-console-action="line" data-value="C">CH C</button></div></section>
+        <section class="console-task ${session.tested ? 'done' : ''}"><small>CHECK 03 · RETURN</small><h4>发送十秒试音</h4><p>确认主持人返听和主输出没有延迟。</p><div class="console-readout">${session.tested ? 'UNKNOWN INPUT' : session.tuned && session.lineReady ? 'READY' : 'STANDBY'}</div><button class="console-action" data-console-action="test" ${session.tuned && session.lineReady && !session.tested ? '' : 'disabled'}>${session.tested ? '异常信号已接管' : '发送试音'}</button></section>
+      </div>`;
+    $$('[data-console-action]', dom.consoleBody).forEach(button => {
+      button.onclick = () => {
+        const action = button.dataset.consoleAction;
+        if (action === 'freq-down' || action === 'freq-up' || action === 'freq-reset') {
+          if (session.tuned) return;
+          if (action === 'freq-reset') session.frequency = 87.1;
+          else session.frequency = Math.max(86.9, Math.min(87.7, session.frequency + (action === 'freq-up' ? .2 : -.2)));
+          session.frequency = Math.round(session.frequency * 10) / 10;
+          if (session.frequency === 87.5) { session.tuned = true; audio.consoleStep(0); }
+          renderProducerSetup();
+          return;
+        }
+        if (action === 'line') {
+          if (button.dataset.value !== 'B') { consoleMistake(button); return; }
+          if (!session.lineReady) audio.consoleStep(1);
+          session.lineReady = true;
+          renderProducerSetup();
+          return;
+        }
+        if (action === 'test' && session.tuned && session.lineReady) {
+          session.tested = true;
+          updateConsoleProgress(3);
+          dom.producerConsole.classList.add('unstable');
+          audio.feedback();
+          setTimeout(renderProducerAnomaly, persistent.settings.reducedMotion ? 40 : 620);
+        }
+      };
+    });
+  }
+
+  function renderProducerAnomaly() {
+    const session = consoleSession;
+    if (!session) return;
+    dom.consoleProgress.textContent = 'ERR / 13';
+    dom.consoleBody.innerHTML = `
+      <div class="console-anomaly"><small>UNREGISTERED RETURN · NO INPUT SOURCE</small><h3>00:13 SIGNAL OVERRIDE</h3><p>主输出已经归零，啸叫仍在。必须在玻璃共振超过安全值以前切断回路。</p>
+        <div class="zero-hint"><small>UNKNOWN RELAY / ZERO</small><p>“别找输入源。第三路不是输入，是回路——把延迟往前推十三毫秒。”</p></div>
+        <div class="console-emergency">
+          <section><span>选择辅助发送</span><div class="console-controls"><button data-emergency="aux" data-value="1">AUX 1</button><button data-emergency="aux" data-value="2">AUX 2</button><button data-emergency="aux" data-value="3" class="${session.aux === 3 ? 'selected' : ''}">AUX 3</button></div></section>
+          <section><span>设置延迟补偿</span><div class="console-controls"><button data-emergency="delay" data-value="-13" class="${session.delay === -13 ? 'selected' : ''}">−13 ms</button><button data-emergency="delay" data-value="0">0 ms</button><button data-emergency="delay" data-value="13">＋13 ms</button></div></section>
+        </div>
+      </div>`;
+    $$('[data-emergency]', dom.consoleBody).forEach(button => {
+      button.onclick = () => {
+        const kind = button.dataset.emergency;
+        const value = Number(button.dataset.value);
+        const correct = (kind === 'aux' && value === 3) || (kind === 'delay' && value === -13);
+        if (!correct) { consoleMistake(button); return; }
+        session[kind] = value;
+        audio.consoleStep(kind === 'aux' ? 0 : 1);
+        if (session.aux === 3 && session.delay === -13) {
+          audio.cut();
+          dom.producerConsole.classList.remove('unstable');
+          setTimeout(renderProducerResolved, persistent.settings.reducedMotion ? 40 : 480);
+        } else renderProducerAnomaly();
+      };
+    });
+  }
+
+  function renderProducerResolved() {
+    if (!consoleSession) return;
+    dom.consoleProgress.textContent = 'LOCKED';
+    dom.consoleBody.innerHTML = `
+      <section class="console-resolved"><small>ABNORMAL RETURN CAPTURED</small><h3>你亲手留下了第一份证据</h3><p>异常线路已经切断。自动比对只能确认，两段信号都经过临海广播中心的旧中继。</p>
+        <div class="signal-match"><div><span>SAMPLE A</span><b>00:13 异常波形</b></div><i></i><div><span>SAMPLE B</span><b>停用号码通话样本</b></div></div>
+        <button class="console-complete" type="button">封存波形 · 返回直播间</button>
+      </section>`;
+    $('.console-complete', dom.consoleBody).onclick = () => {
+      const next = consoleSession.node.next;
+      state.flags.producerCheckComplete = true;
+      state.flags.stationRelayMatched = true;
+      consoleSession = null;
+      dom.producerConsole.classList.add('hidden');
+      autoSave();
+      setTimeout(() => showNode(next), persistent.settings.reducedMotion ? 0 : 240);
+    };
+    requestAnimationFrame(() => $('.console-complete', dom.consoleBody)?.focus());
+  }
+
+  function showProducerConsole(node) {
+    clearTimeout(autoTimer);
+    setAuto(false); setSkip(false);
+    consoleSession = { node, frequency: 87.1, tuned: false, lineReady: false, tested: false, aux: null, delay: null };
+    dom.producerConsole.classList.remove('hidden', 'unstable');
+    renderProducerSetup();
+    autoSave();
+  }
+
+  function showMissionUpdate(node) {
+    clearTimeout(autoTimer);
+    setAuto(false); setSkip(false);
+    missionNext = node.next;
+    dom.missionKicker.textContent = node.kicker || 'SIGNAL LOG UPDATED';
+    dom.missionTitle.textContent = node.title || '主线记录';
+    dom.missionConfirmed.innerHTML = (node.confirmed || []).map(item => `<li>${escapeHTML(token(item))}</li>`).join('');
+    dom.missionPending.innerHTML = (node.pending || []).map(item => `<li>${escapeHTML(token(item))}</li>`).join('');
+    dom.missionObjective.textContent = token(node.objective || '继续监听00:13频道');
+    const paper = $('.mission-paper', dom.missionUpdate);
+    paper.style.animation = 'none';
+    void paper.offsetHeight;
+    paper.style.animation = '';
+    dom.missionUpdate.classList.remove('hidden');
+    state.flags.currentObjective = node.objective || '';
+    const missionLog = Array.isArray(state.flags.missionLog) ? state.flags.missionLog : [];
+    state.flags.missionLog = [...new Set([...missionLog, state.nodeId])];
+    audio.paperLog((node.confirmed || []).length);
+    autoSave();
+    requestAnimationFrame(() => dom.missionContinue.focus());
+  }
+
+  function closeMissionUpdate() {
+    if (!missionNext) return;
+    const next = missionNext;
+    missionNext = null;
+    dom.missionUpdate.classList.add('hidden');
+    audio.click();
+    setTimeout(() => showNode(next), persistent.settings.reducedMotion ? 0 : 180);
+  }
+
+  function showStoryMinigame(node) {
+    clearTimeout(autoTimer);
+    setAuto(false); setSkip(false);
+    if (!minigames) {
+      console.warn('Minigame runtime unavailable:', node.game);
+      showNode(node.next);
+      return;
+    }
+    autoSave();
+    minigames.start(node.game, {
+      player: state.player,
+      hero: state.hero,
+      reducedMotion: persistent.settings.reducedMotion,
+      onComplete: result => {
+        state.flags.minigames = state.flags.minigames && typeof state.flags.minigames === 'object' ? state.flags.minigames : {};
+        state.flags.minigames[node.game] = { completed: true, at: Date.now(), ...(result || {}) };
+        persistent.minigames = Array.isArray(persistent.minigames) ? persistent.minigames : [];
+        if (!persistent.minigames.includes(node.game)) persistent.minigames.push(node.game);
+        if (node.game === 'finalsend' && typeof result?.message === 'string') persistent.zeroMessage = result.message.slice(0, 40);
+        savePersistent();
+        if (node.effect) applyEffect(node.effect);
+        autoSave();
+        setTimeout(() => showNode(node.next), persistent.settings.reducedMotion ? 0 : 180);
+      }
+    });
+  }
+
   function startGame(gameState) {
     audio.ensure();
     clearTimeout(silenceTimer);
@@ -1487,6 +1729,22 @@
     state = clone(gameState);
     state.hero = HERO_NAME;
     state.flags = state.flags && typeof state.flags === 'object' ? state.flags : {};
+    // Repair saves created before V4.8.1: a route could inherit LOG entries
+    // from the previously completed heroine. Keep common-line dialogue and the
+    // active route, but discard entries that clearly belong to another route.
+    if (state.route && Array.isArray(state.history)) {
+      const routePrefixes = {
+        lincheng: ['v4_lc_', 'v43_lincheng_', 'v2_lock_lincheng_'],
+        tangsha: ['v4_ts_', 'v43_tangsha_', 'v2_lock_tangsha_'],
+        sumi: ['v4_sm_', 'v43_sumi_', 'v2_lock_sumi_'],
+        guwanqing: ['v4_gw_', 'v43_guwanqing_', 'v2_lock_guwanqing_'],
+        jiyao: ['v4_jy_', 'v43_jiyao_', 'v2_lock_jiyao_']
+      };
+      const foreignPrefixes = Object.entries(routePrefixes)
+        .filter(([key]) => key !== state.route)
+        .flatMap(([, prefixes]) => prefixes);
+      state.history = state.history.filter(entry => !foreignPrefixes.some(prefix => String(entry.nodeId || '').startsWith(prefix)));
+    }
     // V2 true-route saves used the old reveal structure. Resume them at the
     // beginning of the rebuilt finale so no player is stranded in legacy nodes.
     if (String(state.nodeId || '').startsWith('v2_true_')) state.nodeId = 'v3_true_awaken_01';
@@ -1661,7 +1919,7 @@
       signal.innerHTML = '<div><span>FM · NIGHT RECEIVER</span><b>00:13</b><small>CHANNEL 06 EXISTS</small></div>';
       const copy = document.createElement('div');
       copy.className = 'about-copy';
-      copy.innerHTML = `<small>${RELEASE} · ZERO RELAY</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>87 CUES</b><span>动态夜间声场</span></div></div>`;
+      copy.innerHTML = `<small>${RELEASE} · ZERO RELAY</small><h3>零点之后 · AFTER ZERO</h3><p>都市怪谈 × 深夜电台视觉小说。你不是江临，而是屏幕外替他回答的人。五条个人线会留下五份信号证物；只有亲手拼出共同变量，第六频道才会承认你的存在。</p><div class="about-facts"><div><b>05 + 01</b><span>个人信号与真结局</span></div><div><b>${Object.keys(STORY.nodes).length}</b><span>剧情节点</span></div><div><b>84 CUES</b><span>动态夜间声场</span></div></div>`;
       const links = document.createElement('div');
       links.className = 'about-links';
       const repo = document.createElement('a'); repo.href = 'https://github.com/KevinKaslana093/after-zero'; repo.target = '_blank'; repo.rel = 'noopener'; repo.textContent = 'GitHub · 源码与版本';
@@ -1716,7 +1974,8 @@
     const signalLabel = endingKey === 'true' ? 'TRUE SIGNAL' : ending.failure ? 'LOST SIGNAL' : `SIGNAL ${String(ending.index).padStart(2, '0')} / 05`;
     ctx.fillStyle = accent; ctx.font = '600 20px monospace'; ctx.fillText(signalLabel, 84, 385);
     ctx.fillStyle = '#d9e2e6'; ctx.font = '500 31px "Microsoft YaHei",sans-serif'; ctx.fillText(ending.failure ? '有一段声音没有抵达明天' : endingKey === 'true' ? '第六频道确认了世界之外的回答' : '我接收了一段不会被覆盖的信号', 84, 435);
-    ctx.fillStyle = 'rgba(217,226,230,.56)'; ctx.font = '400 19px "Microsoft YaHei",sans-serif'; ctx.fillText('有些来电，来自尚未发生的明天。', 84, 485);
+    const finalCardLine = endingKey === 'true' && persistent.zeroMessage ? `“${persistent.zeroMessage.slice(0, 26)}”` : '有些来电，来自尚未发生的明天。';
+    ctx.fillStyle = 'rgba(217,226,230,.56)'; ctx.font = '400 19px "Microsoft YaHei",sans-serif'; ctx.fillText(finalCardLine, 84, 485);
     ctx.strokeStyle = accent; ctx.lineWidth = 3;
     ctx.beginPath();
     for (let x = 760; x <= 1090; x += 10) {
@@ -1772,12 +2031,33 @@
         decoder.appendChild(decode);
       }
       body.appendChild(decoder);
+      const gameNames = {
+        city: '城市信号救援', crisis: '00:13紧急抢修', radio: '林澄 · 声音锚定', camera: '唐砂 · 不可能照片',
+        code: '苏弥 · 逻辑补丁', medical: '顾晚晴 · 无名病历', folklore: '纪遥 · 第六卷',
+        evidence: '五线证物交叉验证', finalsend: '零点之后'
+      };
+      const unlockedGames = (Array.isArray(persistent.minigames) ? persistent.minigames : []).filter(id => gameNames[id]);
+      if (unlockedGames.length) {
+        const replay = document.createElement('section');
+        replay.className = 'minigame-replay';
+        replay.innerHTML = '<header><span>SIGNAL REPRODUCTION</span><b>信号复现</b><em>不会改变剧情存档</em></header><div class="minigame-replay-grid"></div>';
+        unlockedGames.forEach(id => {
+          const button = document.createElement('button');
+          button.type = 'button'; button.innerHTML = `<small>${id.toUpperCase()}</small><b>${gameNames[id]}</b>`;
+          button.onclick = () => {
+            closeModal();
+            minigames?.start(id, { player: state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME, hero: HERO_NAME, reducedMotion: persistent.settings.reducedMotion, onComplete: () => openArchive() });
+          };
+          $('.minigame-replay-grid', replay).appendChild(button);
+        });
+        body.appendChild(replay);
+      }
       const note = document.createElement('p');
       note.style.cssText = 'margin:24px 0 0;text-align:center;color:#91a6b4;font:400 11px/1.8 "Noto Serif SC",serif;letter-spacing:.1em';
       const heroineKeys = Object.entries(STORY.endings).filter(([, ending]) => ending.routeEnding !== false && ending.countsTowardRoute !== false).map(([key]) => key);
       const heroineCount = heroineKeys.filter(key => persistent.endings.includes(key)).length;
       note.textContent = persistent.endings.includes('true')
-        ? `TRUE SIGNAL 已完成：${state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME} · 世界之外的回答者。`
+        ? `TRUE SIGNAL 已完成：${state?.player || persistent.autoSave?.state?.player || DEFAULT_PLAYER_NAME} · 世界之外的回答者。${persistent.zeroMessage ? ` 留言：“${persistent.zeroMessage}”` : ''}`
         : heroineCount === 5
           ? persistent.decoder.solved
             ? '身份校验完成：第六频道正在等待你的接入。'
@@ -1847,8 +2127,12 @@
     dom.newGame.onclick = () => { audio.ensure(); dom.nameModal.classList.remove('hidden'); setTimeout(() => dom.playerName.select(), 50); };
     dom.confirmName.onclick = () => {
       const name = dom.playerName.value.trim().slice(0, 8) || DEFAULT_PLAYER_NAME;
-      dom.nameModal.classList.add('hidden'); startGame(newState(name));
+      dom.nameModal.classList.add('hidden'); startCallPrelude(newState(name));
     };
+    dom.answerCall.onclick = answerCallPrelude;
+    dom.callContinue.onclick = finishCallPrelude;
+    dom.callSkip.onclick = finishCallPrelude;
+    dom.missionContinue.onclick = closeMissionUpdate;
     dom.playerName.addEventListener('keydown', e => { if (e.key === 'Enter') dom.confirmName.click(); });
     dom.continue.onclick = () => persistent.autoSave && startGame(persistent.autoSave.state);
     dom.collection.onclick = openArchive;
@@ -1893,7 +2177,9 @@
       next.hero = HERO_NAME;
       next.nodeId = STORY.replayStart || STORY.routeSelect;
       next.route = null;
-      next.history = state?.history?.slice(-40) || next.history || [];
+      // A completed heroine route is a closed playback session. Carrying its
+      // dialogue into the next route makes LOG show another heroine's scenes.
+      next.history = STORY.replayStart ? [] : (state?.history?.slice(-40) || next.history || []);
       if (STORY.replayStart) {
         Object.keys(next.affinity).forEach(key => { next.affinity[key] = 0; });
         next.flags = {};
@@ -1911,12 +2197,17 @@
         e.preventDefault(); return;
       }
       if (e.key === 'Escape') {
+        if (dom.storyMinigame && !dom.storyMinigame.classList.contains('hidden')) {
+          minigames?.togglePause(!minigames.paused); return;
+        }
+        if (!dom.callPrelude.classList.contains('hidden') || !dom.producerConsole.classList.contains('hidden') || !dom.missionUpdate.classList.contains('hidden')) return;
         if (!dom.decoderModal.classList.contains('hidden')) { closeDecoder(); return; }
         if (!dom.modal.classList.contains('hidden')) closeModal();
         else if (dom.game.classList.contains('active')) openGameMenu();
         return;
       }
-      if (!dom.game.classList.contains('active') || !dom.modal.classList.contains('hidden')) return;
+      if (!dom.game.classList.contains('active') || !dom.modal.classList.contains('hidden') || !dom.producerConsole.classList.contains('hidden') || !dom.missionUpdate.classList.contains('hidden')
+        || (dom.storyMinigame && !dom.storyMinigame.classList.contains('hidden'))) return;
       if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); advance(); }
       if (e.key.toLowerCase() === 'a') setAuto(!autoMode);
       if (e.key.toLowerCase() === 'l') openLog();

@@ -14,7 +14,8 @@
   <meta property="og:image" content="https://kevinkaslana093.github.io/after-zero/assets/bg-title-zero-unsealed-v4.webp">
   <meta name="twitter:card" content="summary_large_image">
   <title>零点之后 · AFTER ZERO</title>
-  <link rel="stylesheet" href="styles.css?v=4.6.0">
+  <link rel="stylesheet" href="styles.css?v=4.8.0">
+  <link rel="stylesheet" href="minigames.css?v=4.8.2">
 </head>
 <body>
   <main id="app">
@@ -71,7 +72,7 @@
         </div>
         <p class="mobile-title-note">横竖屏均可游玩 · 进度自动保存在当前浏览器</p>
       </div>
-      <footer class="title-footer"><span>建议佩戴耳机 · 首次点击后启用声音</span><b>V4.6 · WINDOW CASCADE</b></footer>
+      <footer class="title-footer"><span>建议佩戴耳机 · 首次点击后启用声音</span><b>V4.8.2 · SIGNAL OPERATIONS</b></footer>
       <div id="zero-error" class="zero-error" role="alertdialog" aria-modal="true" aria-labelledby="zero-error-title" hidden>
         <div class="zero-error-noise"></div>
         <div class="zero-glitch-bars bars-a"></div>
@@ -191,6 +192,68 @@
       </section>
     </div>
 
+    <section id="call-prelude" class="call-prelude hidden" role="dialog" aria-modal="true" aria-labelledby="call-caller">
+      <div class="call-static" aria-hidden="true"></div>
+      <button id="call-skip" class="call-skip" type="button">跳过回忆</button>
+      <div class="phone-shell">
+        <div class="phone-speaker" aria-hidden="true"></div>
+        <div class="phone-status"><span>00:13</span><b>INCOMING SIGNAL</b></div>
+        <div class="caller-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="call-label">通讯录旧备注 · 身份未验证</p>
+        <h2 id="call-caller">江朔</h2>
+        <p id="call-state" class="call-state">正在呼入</p>
+        <div class="call-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <button id="answer-call" class="answer-call" type="button"><span></span><b>接听</b></button>
+        <div id="call-transcript" class="call-transcript" aria-live="polite">
+          <small>RECOVERED VOICE · 00:13</small>
+          <blockquote id="call-voice">“江临……如果你听见这段话——”</blockquote>
+          <p>连接中断。信号经过：<strong>临海广播中心</strong></p>
+          <button id="call-continue" type="button">前往信号来源</button>
+        </div>
+      </div>
+      <p class="call-caption"><span>八年前停用的号码</span><b>在今晚重新拨了过来</b></p>
+    </section>
+
+    <section id="producer-console" class="producer-console hidden" role="dialog" aria-modal="true" aria-labelledby="producer-console-title">
+      <div class="console-backdrop"></div>
+      <div class="console-shell">
+        <header>
+          <div><small>FIRST NIGHT · PRODUCTION CHECK</small><h2 id="producer-console-title">完成首夜试播</h2></div>
+          <span id="console-progress">00 / 03</span>
+        </header>
+        <div id="console-body" class="console-body"></div>
+        <footer><span>表面任务：确保节目正常开播</span><b>PRIVATE / 追踪江朔来电</b></footer>
+      </div>
+    </section>
+
+    <section id="mission-update" class="mission-update hidden" role="dialog" aria-modal="true" aria-labelledby="mission-title">
+      <div class="mission-dim"></div>
+      <article class="mission-paper">
+        <header><small id="mission-kicker">SIGNAL LOG UPDATED</small><span>FM 00:13</span></header>
+        <h2 id="mission-title">主线记录</h2>
+        <ul id="mission-confirmed" class="mission-confirmed"></ul>
+        <ul id="mission-pending" class="mission-pending"></ul>
+        <div class="mission-objective"><small>CURRENT OBJECTIVE</small><p id="mission-objective"></p></div>
+        <button id="mission-continue" type="button">收起记录 · 继续</button>
+      </article>
+    </section>
+
+    <section id="story-minigame" class="story-minigame hidden" role="dialog" aria-modal="true" aria-labelledby="minigame-title">
+      <div class="minigame-backdrop"></div>
+      <article class="minigame-shell">
+        <header>
+          <div><small id="minigame-kicker">INTERACTIVE SIGNAL</small><h2 id="minigame-title">信号操作</h2></div>
+          <div class="minigame-status"><span id="minigame-progress">PHASE 01</span><button id="minigame-pause" type="button">暂停</button></div>
+        </header>
+        <div id="minigame-body" class="minigame-body"></div>
+        <footer><span id="minigame-objective">完成当前操作</span><b id="minigame-feedback" aria-live="polite">等待输入</b></footer>
+        <div id="minigame-pause-sheet" class="minigame-pause-sheet hidden">
+          <small>SIGNAL HELD</small><h3>操作已暂停</h3><p>剧情和倒计时均已停止。</p><button type="button">继续操作</button>
+        </div>
+        <div id="minigame-errors" class="minigame-errors" aria-live="assertive"></div>
+      </article>
+    </section>
+
     <div id="decoder-modal" class="decoder-modal hidden" role="dialog" aria-modal="true" aria-labelledby="decoder-title">
       <div class="decoder-backdrop"></div>
       <section class="decoder-console">
@@ -211,9 +274,10 @@
   </main>
 
   <noscript>本游戏需要启用 JavaScript。</noscript>
-  <script src="story.js?v=4.6.0"></script>
-  <script src="story-v2.js?v=4.6.0"></script>
-  <script src="story-v4.js?v=4.6.0"></script>
-  <script src="game.js?v=4.6.0"></script>
+  <script src="story.js?v=4.8.0"></script>
+  <script src="story-v2.js?v=4.8.0"></script>
+  <script src="story-v4.js?v=4.8.0"></script>
+  <script src="minigames.js?v=4.8.2"></script>
+  <script src="game.js?v=4.8.2"></script>
 </body>
 </html>
